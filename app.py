@@ -66,7 +66,16 @@ st.markdown("""
         margin-bottom: 2rem;
         box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     }
+    .team-section {
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
     .team-member {
+        text-align: center;
         background: rgba(255,255,255,0.1);
         padding: 1.2rem;
         margin: 0.8rem 0;
@@ -360,25 +369,22 @@ def show_team_introduction():
             A comprehensive machine learning application for early detection and screening of Autism Spectrum Disorder
         </p>
         
-        <h3 style="margin-bottom: 1rem;">Project Team</h3>
+        <div class="team-section">Project Team</div>
         
         <div class="team-member">
-            <strong>Omar Yasser Mahrous</strong><br>
-            <span>LinkedIn: www.linkedin.com/in/omar-yasser-mahrous</span>
+            <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong>
         </div>
         
         <div class="team-member">
-            <strong>Marwan Aly</strong><br>
-            <span>LinkedIn: www.linkedin.com/in/marwanalymohamed</span>
+            <strong style="font-size: 1.3rem;">Marwan Aly</strong>
         </div>
         
         <div class="team-member">
-            <strong>Nouran Ashraf</strong><br>
-            <span>LinkedIn: https://www.linkedin.com/in/nouran-ashraf-5644811ab/</span>
+            <strong style="font-size: 1.3rem;">Nouran Ashraf</strong>
         </div>
         
-        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.2); border-radius: 8px;">
-            <strong>Facilitator: Eng. Sara Baza</strong>
+        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.2); border-radius: 8px; text-align: center;">
+            <strong style="font-size: 1.2rem;">Facilitator: Eng. Sara Baza</strong>
         </div>
     </div>
     """, unsafe_allow_html=True)
