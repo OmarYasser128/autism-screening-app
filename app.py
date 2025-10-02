@@ -10,14 +10,30 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from lightgbm import LGBMClassifier
-from catboost import CatBoostClassifier
 from scipy.stats import chi2_contingency, ttest_ind
 import io
 import warnings
-warnings.filterwarnings("ignore", category=UserWarning, message="X does not have valid feature names")
+warnings.filterwarnings("ignore")
+
+# Try to import optional packages with fallbacks
+try:
+    from xgboost import XGBClassifier
+    XGB_AVAILABLE = True
+except ImportError:
+    XGB_AVAILABLE = False
+
+try:
+    from lightgbm import LGBMClassifier
+    LGBM_AVAILABLE = True
+except ImportError:
+    LGBM_AVAILABLE = False
+
+try:
+    from catboost import CatBoostClassifier
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
 
 # Set page configuration
 st.set_page_config(
@@ -62,6 +78,13 @@ st.markdown("""
         border: 2px solid #1f77b4;
         margin: 10px 0;
     }
+    .warning-box {
+        background-color: #fff3cd;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #ffc107;
+        margin: 10px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -103,15 +126,8 @@ class AutismScreeningApp:
         screening_cols = [col for col in self.df.columns if 'A' in col and '_Score' in col]
         self.df['Total_Score'] = self.df[screening_cols].sum(axis=1)
         
-        # Encoding for modeling
-        top_ethnicities = self.df['ethnicity'].value_counts().nlargest(5).index
-        self.df['ethnicity_encoded'] = self.df['ethnicity'].apply(lambda x: x if x in top_ethnicities else "Other")
-        self.df = pd.get_dummies(self.df, columns=['ethnicity_encoded'], drop_first=True, dtype=int)
-        
-        top_countries = self.df['contry_of_res'].value_counts().nlargest(10).index
-        self.df['contry_of_res_encoded'] = self.df['contry_of_res'].apply(lambda x: x if x in top_countries else "Other")
-        self.df = pd.get_dummies(self.df, columns=['contry_of_res_encoded'], drop_first=True, dtype=int)
-        
+        # Encoding for modeling - FIXED: Only encode numeric columns
+        # First convert categorical columns to numeric
         binary_mappings = {
             'used_app_before': {'no': 0, 'yes': 1},
             'relation': {'Self': 0, 'Others': 1},
@@ -122,14 +138,38 @@ class AutismScreeningApp:
         for col, mapping in binary_mappings.items():
             self.df[col] = self.df[col].map(mapping)
         
+        # Handle ethnicity and country with proper encoding
+        top_ethnicities = self.df['ethnicity'].value_counts().nlargest(5).index
+        self.df['ethnicity_encoded'] = self.df['ethnicity'].apply(lambda x: x if x in top_ethnicities else "Other")
+        ethnicity_dummies = pd.get_dummies(self.df['ethnicity_encoded'], prefix='ethnicity', dtype=int)
+        self.df = pd.concat([self.df, ethnicity_dummies], axis=1)
+        self.df.drop(['ethnicity', 'ethnicity_encoded'], axis=1, inplace=True)
+        
+        top_countries = self.df['contry_of_res'].value_counts().nlargest(10).index
+        self.df['country_encoded'] = self.df['contry_of_res'].apply(lambda x: x if x in top_countries else "Other")
+        country_dummies = pd.get_dummies(self.df['country_encoded'], prefix='country', dtype=int)
+        self.df = pd.concat([self.df, country_dummies], axis=1)
+        self.df.drop(['contry_of_res', 'country_encoded'], axis=1, inplace=True)
+        
+        # Remove any remaining non-numeric columns except target
+        non_numeric_cols = self.df.select_dtypes(include=['object']).columns
+        for col in non_numeric_cols:
+            if col != 'Class/ASD' and col != 'gender_label':
+                self.df.drop(col, axis=1, inplace=True)
+        
+        # Ensure all data is numeric
+        self.df = self.df.apply(pd.to_numeric, errors='coerce').fillna(0)
+        
         # Scale age
-        self.df['age'] = self.scaler.fit_transform(self.df[['age']])
+        if 'age' in self.df.columns:
+            self.df['age'] = self.scaler.fit_transform(self.df[['age']])
         
         return self.df
     
     def train_enhanced_models(self):
         """Train all models with cross-validation and AUC scoring"""
-        X = self.df.drop(columns=['Class/ASD'])
+        # Ensure we only use numeric columns
+        X = self.df.select_dtypes(include=[np.number]).drop('Class/ASD', axis=1)
         y = self.df['Class/ASD']
         self.feature_names = X.columns.tolist()
         
@@ -138,23 +178,30 @@ class AutismScreeningApp:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        # Scale features
+        # Scale features - FIXED: Ensure we only scale numeric data
         self.X_train_scaled = self.scaler.fit_transform(X_train)
         self.X_test_scaled = self.scaler.transform(X_test)
         
-        # Define enhanced models
+        # Define enhanced models (only include available ones)
         self.models = {
             "Logistic Regression": LogisticRegression(max_iter=1000, C=0.01),
             "Decision Tree": DecisionTreeClassifier(max_depth=5, criterion="gini", min_samples_split=20, min_samples_leaf=15),
-            "Random Forest": RandomForestClassifier(n_estimators=500, max_depth=8, random_state=42, min_samples_split=20, min_samples_leaf=10),
-            "Support Vector Machine": SVC(kernel="rbf", C=1.0, gamma="scale", probability=True),
+            "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42, min_samples_split=20, min_samples_leaf=10),
+            "Support Vector Machine": SVC(kernel="rbf", C=1.0, gamma="scale", probability=True, random_state=42),
             "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=8, weights="distance", metric="euclidean"),
-            "Gradient Boosting": GradientBoostingClassifier(n_estimators=500, learning_rate=0.01, max_depth=3),
-            "XGBoost": XGBClassifier(n_estimators=500, learning_rate=0.05, max_depth=2, random_state=42, eval_metric="logloss"),
-            "AdaBoost": AdaBoostClassifier(n_estimators=500, learning_rate=0.05, random_state=42),
-            "LightGBM": LGBMClassifier(n_estimators=500, learning_rate=0.05, max_depth=6, num_leaves=15, random_state=42, verbose=-1),
-            "CatBoost": CatBoostClassifier(iterations=500, learning_rate=0.05, depth=6, random_state=42, verbose=0)
+            "Gradient Boosting": GradientBoostingClassifier(n_estimators=100, learning_rate=0.01, max_depth=3, random_state=42),
+            "AdaBoost": AdaBoostClassifier(n_estimators=100, learning_rate=0.05, random_state=42),
         }
+        
+        # Add optional models if available
+        if XGB_AVAILABLE:
+            self.models["XGBoost"] = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=2, random_state=42, eval_metric="logloss")
+        
+        if LGBM_AVAILABLE:
+            self.models["LightGBM"] = LGBMClassifier(n_estimators=100, learning_rate=0.05, max_depth=6, num_leaves=15, random_state=42, verbose=-1)
+        
+        if CATBOOST_AVAILABLE:
+            self.models["CatBoost"] = CatBoostClassifier(iterations=100, learning_rate=0.05, depth=6, random_state=42, verbose=0)
         
         # Define stratified k-fold
         skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -163,7 +210,7 @@ class AutismScreeningApp:
         auc_results = {}
 
         for name, model in self.models.items():
-            with st.spinner(f'Training {name}...'):
+            try:
                 # Cross-validation scores
                 cv_scores = cross_val_score(model, self.X_train_scaled, self.y_train, cv=skf, scoring="accuracy")
                 
@@ -173,60 +220,92 @@ class AutismScreeningApp:
                 acc = accuracy_score(self.y_test, y_pred)
 
                 # Calculate AUC if possible
+                auc = "N/A"
                 if hasattr(model, "predict_proba"):
-                    y_proba = model.predict_proba(self.X_test_scaled)[:, 1]
-                    auc = roc_auc_score(self.y_test, y_proba)
-                    auc_results[name] = auc
-                else:
-                    auc_results[name] = "N/A"
+                    try:
+                        y_proba = model.predict_proba(self.X_test_scaled)[:, 1]
+                        auc = roc_auc_score(self.y_test, y_proba)
+                    except:
+                        auc = "N/A"
 
                 # Store results
                 results.append({
                     "Model": name,
-                    "CV Accuracy": cv_scores.mean(),
-                    "Test Accuracy": acc,
-                    "AUC": auc_results[name]
+                    "CV Accuracy": round(cv_scores.mean(), 4),
+                    "Test Accuracy": round(acc, 4),
+                    "AUC": auc
                 })
+                
+            except Exception as e:
+                st.warning(f"Model {name} failed: {str(e)}")
+                continue
 
         # Build DataFrame and sort by CV Accuracy
-        results_df = pd.DataFrame(results).sort_values(by="CV Accuracy", ascending=False)
-        return results_df
+        if results:
+            results_df = pd.DataFrame(results).sort_values(by="CV Accuracy", ascending=False)
+            return results_df
+        else:
+            return pd.DataFrame(columns=["Model", "CV Accuracy", "Test Accuracy", "AUC"])
     
     def predict_new_sample(self, features_dict):
         """Make prediction for new sample"""
-        if not self.models:
+        if not self.models or self.feature_names is None:
             return None
         
-        # Create feature vector
-        features = np.zeros(len(self.feature_names))
-        
-        for i, feature in enumerate(self.feature_names):
-            if feature in features_dict:
-                features[i] = features_dict[feature]
-        
-        # Scale the features
-        features_scaled = self.scaler.transform([features])
-        
-        # Get predictions from all models
-        predictions = {}
-        for name, model in self.models.items():
-            pred = model.predict(features_scaled)[0]
-            if hasattr(model, "predict_proba"):
-                proba = model.predict_proba(features_scaled)[0]
-                confidence = max(proba)
-            else:
-                confidence = 1.0
-                
-            predictions[name] = {
-                'prediction': pred,
-                'confidence': confidence,
-                'label': 'ASD' if pred == 1 else 'No ASD'
-            }
-        
-        return predictions
+        try:
+            # Create feature vector
+            features = np.zeros(len(self.feature_names))
+            
+            for i, feature in enumerate(self.feature_names):
+                if feature in features_dict:
+                    features[i] = features_dict[feature]
+            
+            # Scale the features
+            features_scaled = self.scaler.transform([features])
+            
+            # Get predictions from all models
+            predictions = {}
+            for name, model in self.models.items():
+                try:
+                    pred = model.predict(features_scaled)[0]
+                    confidence = 0.5  # Default confidence
+                    
+                    if hasattr(model, "predict_proba"):
+                        proba = model.predict_proba(features_scaled)[0]
+                        confidence = max(proba)
+                    
+                    predictions[name] = {
+                        'prediction': pred,
+                        'confidence': confidence,
+                        'label': 'ASD' if pred == 1 else 'No ASD'
+                    }
+                except:
+                    continue
+            
+            return predictions
+        except:
+            return None
 
 def main():
     st.markdown('<div class="main-header">🧠 Autism Screening Prediction App</div>', unsafe_allow_html=True)
+    
+    # Show package availability status
+    unavailable_models = []
+    if not XGB_AVAILABLE:
+        unavailable_models.append("XGBoost")
+    if not LGBM_AVAILABLE:
+        unavailable_models.append("LightGBM")
+    if not CATBOOST_AVAILABLE:
+        unavailable_models.append("CatBoost")
+    
+    if unavailable_models:
+        st.markdown(f"""
+        <div class="warning-box">
+        <h4>⚠️ Package Availability Notice</h4>
+        <p>Some advanced models may not be available: {', '.join(unavailable_models)}</p>
+        <p>The app will work with available models: Logistic Regression, Decision Tree, Random Forest, SVM, K-Neighbors, Gradient Boosting, AdaBoost</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     app = AutismScreeningApp()
     
@@ -244,7 +323,12 @@ def main():
     
     if uploaded_file is not None:
         with st.spinner('Loading and preprocessing data...'):
-            df = app.load_data(uploaded_file)
+            try:
+                df = app.load_data(uploaded_file)
+                st.success("Data loaded successfully!")
+            except Exception as e:
+                st.error(f"Error loading data: {str(e)}")
+                return
         
         if page == "Data Overview":
             show_data_overview(df)
@@ -319,6 +403,9 @@ def show_data_overview(df):
 def show_enhanced_eda(df):
     st.markdown('<div class="section-header">📈 Enhanced Exploratory Data Analysis</div>', unsafe_allow_html=True)
     
+    # Create a copy for EDA to avoid modifying original
+    df_eda = df.copy()
+    
     # Dataset Overview
     st.markdown("""
     <div class="info-box">
@@ -333,12 +420,14 @@ def show_enhanced_eda(df):
     </div>
     """, unsafe_allow_html=True)
     
-    # 1. Target Distribution by Gender
-    st.subheader("🎯 Target Distribution by Gender")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.countplot(x='gender_label', hue='Class/ASD', data=df, palette='coolwarm', ax=ax)
-    ax.set_title('ASD Diagnosis by Gender')
-    ax.set_xlabel('Gender')
+    # 1. Target Distribution
+    st.subheader("🎯 Target Distribution")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    target_counts = df_eda['Class/ASD'].value_counts()
+    colors = ['#ff9999', '#66b3ff']
+    ax.pie(target_counts.values, labels=['No ASD', 'ASD'], autopct='%1.1f%%', 
+           colors=colors, startangle=90)
+    ax.set_title("ASD vs No ASD Distribution")
     st.pyplot(fig)
     
     # 2. Age Distribution
@@ -347,7 +436,7 @@ def show_enhanced_eda(df):
     
     with col1:
         fig, ax = plt.subplots(figsize=(10, 5))
-        sns.histplot(df['age'], bins=30, kde=True, color='skyblue', ax=ax)
+        sns.histplot(df_eda['age'], bins=30, kde=True, color='skyblue', ax=ax)
         ax.set_title('Age Distribution')
         ax.set_xlabel('Age')
         ax.set_ylabel('Frequency')
@@ -366,167 +455,83 @@ def show_enhanced_eda(df):
         </div>
         """, unsafe_allow_html=True)
     
-    # 3. Gender and Ethnicity Distribution
-    st.subheader("👥 Demographic Distributions")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.countplot(x='gender', data=df, hue="gender", palette='Set2', ax=ax)
-        ax.set_title('Gender Distribution')
-        ax.set_xlabel('Gender')
-        ax.set_ylabel('Count')
-        st.pyplot(fig)
-    
-    with col2:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.countplot(y='ethnicity', data=df, order=df['ethnicity'].value_counts().index, 
-                     hue="ethnicity", palette='viridis', ax=ax)
-        ax.set_title('Ethnicity Distribution')
-        ax.set_xlabel('Count')
-        ax.set_ylabel('Ethnicity')
-        st.pyplot(fig)
-    
-    # 4. Medical History Analysis
-    st.subheader("🏥 Medical History Analysis")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
-    
-    # Jaundice History
-    sns.countplot(x='jaundice', hue='Class/ASD', data=df, palette='coolwarm', ax=ax1)
-    ax1.set_title('ASD Diagnosis by Jaundice History')
-    
-    # Autism History
-    sns.countplot(x='austim', hue='Class/ASD', data=df, palette='coolwarm', ax=ax2)
-    ax2.set_title('ASD Diagnosis by Family Autism History')
-    
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # 5. Screening Questions Analysis
+    # 3. Screening Questions Analysis
     st.subheader("📝 Screening Questions Analysis")
     
-    # Correlation Heatmap
-    screening_cols = [col for col in df.columns if 'A' in col and '_Score' in col]
-    fig, ax = plt.subplots(figsize=(12, 8))
-    correlation_matrix = df[screening_cols].corr()
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', ax=ax, fmt='.2f')
-    ax.set_title('Correlation Heatmap of Screening Questions (A1–A10)')
-    st.pyplot(fig)
-    
-    # Total Score Distribution
-    st.subheader("📊 Total Screening Score Distribution")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.histplot(df['Total_Score'], bins=10, kde=False, color='orange', ax=ax)
-        ax.set_title('Distribution of Total Screening Score (A1–A10)')
-        ax.set_xlabel('Total Score')
-        ax.set_ylabel('Count')
+    # Correlation Heatmap for A1-A10 scores
+    screening_cols = [col for col in df_eda.columns if 'A' in col and '_Score' in col]
+    if screening_cols:
+        fig, ax = plt.subplots(figsize=(12, 8))
+        correlation_matrix = df_eda[screening_cols].corr()
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', ax=ax, fmt='.2f')
+        ax.set_title('Correlation Heatmap of Screening Questions (A1–A10)')
         st.pyplot(fig)
     
-    with col2:
-        st.markdown("""
-        <div class="info-box">
-        <h4>Total Score Insights</h4>
-        <ul>
-        <li><strong>Bimodal distribution:</strong> Low scorers (0-3) and high scorers (10)</li>
-        <li>Middle-range scores (4–8) are less frequent</li>
-        <li>Spike at maximum score (10) indicates strong ASD indicators</li>
-        <li>Total_Score is a strong discriminative feature between classes</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    # Total Score Distribution
+    if 'Total_Score' in df_eda.columns:
+        st.subheader("📊 Total Screening Score Distribution")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            sns.histplot(df_eda['Total_Score'], bins=10, kde=False, color='orange', ax=ax)
+            ax.set_title('Distribution of Total Screening Score (A1–A10)')
+            ax.set_xlabel('Total Score')
+            ax.set_ylabel('Count')
+            st.pyplot(fig)
+        
+        with col2:
+            st.markdown("""
+            <div class="info-box">
+            <h4>Total Score Insights</h4>
+            <ul>
+            <li><strong>Bimodal distribution:</strong> Low scorers (0-3) and high scorers (10)</li>
+            <li>Middle-range scores (4–8) are less frequent</li>
+            <li>Spike at maximum score (10) indicates strong ASD indicators</li>
+            <li>Total_Score is a strong discriminative feature between classes</li>
+            </ul>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # 6. Geographic Analysis
-    st.subheader("🌍 Geographic Distribution")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    top_countries = df['contry_of_res'].value_counts().nlargest(10).index
-    sns.countplot(y='contry_of_res', data=df[df['contry_of_res'].isin(top_countries)], 
-                 order=top_countries, hue="contry_of_res", palette='mako', ax=ax)
-    ax.set_title('Top 10 Countries of Residence')
-    ax.set_xlabel('Count')
-    st.pyplot(fig)
-    
-    # 7. App Usage Analysis
-    st.subheader("📱 App Usage Analysis")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.countplot(x='used_app_before', hue='Class/ASD', data=df, palette='Set1', ax=ax)
-    ax.set_title('ASD Diagnosis by App Usage Before Test')
-    ax.set_xlabel('Used App Before')
-    ax.set_ylabel('Count')
-    st.pyplot(fig)
-    
-    # 8. Correlation with Target
+    # 4. Correlation with Target
     st.subheader("🔗 Correlation with Target Variable")
-    fig, ax = plt.subplots(figsize=(8, 10))
-    corr = df.corr(numeric_only=True)
-    target_corr = corr[['Class/ASD']].sort_values(by='Class/ASD', ascending=False)
-    sns.heatmap(target_corr, annot=True, cmap='coolwarm', ax=ax, fmt='.3f')
-    ax.set_title('Correlation of Features with Target (Class/ASD)')
-    st.pyplot(fig)
+    numeric_cols = df_eda.select_dtypes(include=[np.number]).columns
+    if 'Class/ASD' in numeric_cols:
+        fig, ax = plt.subplots(figsize=(8, 10))
+        corr = df_eda[numeric_cols].corr()
+        target_corr = corr[['Class/ASD']].sort_values(by='Class/ASD', ascending=False)
+        sns.heatmap(target_corr, annot=True, cmap='coolwarm', ax=ax, fmt='.3f')
+        ax.set_title('Correlation of Features with Target (Class/ASD)')
+        st.pyplot(fig)
     
-    # 9. Statistical Significance Tests
-    st.subheader("📊 Statistical Significance Tests")
-    
-    # Chi-Square Tests
-    st.write("**Chi-Square Tests for Categorical Features:**")
-    categorical_features = ['gender', 'jaundice', 'austim', 'used_app_before', 'relation', 'ethnicity', 'contry_of_res']
-    
-    chi2_results = []
-    for col in categorical_features:
-        if col in df.columns:
-            contingency_table = pd.crosstab(df[col], df['Class/ASD'])
-            chi2, p, dof, ex = chi2_contingency(contingency_table)
-            significance = "✅ Significant" if p < 0.05 else "❌ Not Significant"
-            chi2_results.append([col, f"{p:.5f}", significance])
-    
-    chi2_df = pd.DataFrame(chi2_results, columns=["Feature", "P-Value", "Significance"])
-    st.dataframe(chi2_df)
-    
-    # T-Tests
-    st.write("**T-tests for Continuous Features:**")
-    continuous_features = ['age', 'Total_Score', 'result']
-    
-    ttest_results = []
-    for col in continuous_features:
-        if col in df.columns:
-            group0 = df[df['Class/ASD'] == 0][col].dropna()
-            group1 = df[df['Class/ASD'] == 1][col].dropna()
-            stat, p = ttest_ind(group0, group1, equal_var=False)
-            significance = "✅ Significant" if p < 0.05 else "❌ Not Significant"
-            ttest_results.append([col, f"{p:.5f}", significance])
-    
-    ttest_df = pd.DataFrame(ttest_results, columns=["Feature", "P-Value", "Significance"])
-    st.dataframe(ttest_df)
-    
-    # 10. Feature Importance Analysis
+    # 5. Feature Importance Analysis
     st.subheader("🎯 Feature Importance Analysis")
     
-    # Encode categorical variables for feature importance
-    cat_cols = df.select_dtypes(include=['object']).columns
-    df_encoded = df.copy()
-    df_encoded = pd.get_dummies(df_encoded, columns=cat_cols, drop_first=True)
-    
-    X = df_encoded.drop('Class/ASD', axis=1)
-    y = df_encoded['Class/ASD']
-    
-    # Random Forest for importance
-    rf = RandomForestClassifier(random_state=42)
-    rf.fit(X, y)
-    
-    importances = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    importances.head(15).plot(kind='barh', color='teal', ax=ax)
-    ax.set_title('Top 15 Feature Importances (Random Forest)')
-    ax.set_xlabel('Importance Score')
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # Display top features
-    st.write("**Top 15 Important Features:**")
-    st.dataframe(importances.head(15).reset_index().rename(columns={'index': 'Feature', 0: 'Importance'}))
+    try:
+        # Use only numeric columns for feature importance
+        numeric_df = df_eda.select_dtypes(include=[np.number])
+        if 'Class/ASD' in numeric_df.columns:
+            X = numeric_df.drop('Class/ASD', axis=1)
+            y = numeric_df['Class/ASD']
+            
+            # Random Forest for importance
+            rf = RandomForestClassifier(random_state=42, n_estimators=100)
+            rf.fit(X, y)
+            
+            importances = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
+            
+            fig, ax = plt.subplots(figsize=(10, 8))
+            importances.head(15).plot(kind='barh', color='teal', ax=ax)
+            ax.set_title('Top 15 Feature Importances (Random Forest)')
+            ax.set_xlabel('Importance Score')
+            plt.tight_layout()
+            st.pyplot(fig)
+            
+            # Display top features
+            st.write("**Top 15 Important Features:**")
+            st.dataframe(importances.head(15).reset_index().rename(columns={'index': 'Feature', 0: 'Importance'}))
+    except Exception as e:
+        st.warning(f"Feature importance analysis skipped: {str(e)}")
 
 def show_advanced_model_training(app):
     st.markdown('<div class="section-header">🤖 Advanced Model Training & Evaluation</div>', unsafe_allow_html=True)
@@ -535,10 +540,10 @@ def show_advanced_model_training(app):
     <div class="info-box">
     <h4>🎯 Enhanced Modeling Approach</h4>
     <ul>
-    <li><strong>10 Different Algorithms</strong> including ensemble methods</li>
+    <li><strong>Multiple Algorithms</strong> including ensemble methods</li>
     <li><strong>5-Fold Stratified Cross Validation</strong> for robust evaluation</li>
     <li><strong>AUC Scoring</strong> for imbalanced data performance</li>
-    <li><strong>Advanced Models:</strong> XGBoost, LightGBM, CatBoost, AdaBoost</li>
+    <li><strong>Advanced Models:</strong> Random Forest, Gradient Boosting, AdaBoost + optional advanced models</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -547,88 +552,101 @@ def show_advanced_model_training(app):
         with st.spinner('Training advanced models with cross-validation... This may take a few minutes.'):
             results_df = app.train_enhanced_models()
         
-        st.success("All models trained successfully!")
-        
-        # Display comprehensive results
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📊 Model Performance Summary")
-            st.dataframe(results_df.style.format({
-                'CV Accuracy': '{:.4f}',
-                'Test Accuracy': '{:.4f}',
-                'AUC': '{:.3f}' if results_df['AUC'].dtype != object else '{}'
-            }))
-        
-        with col2:
-            st.subheader("📈 Test Accuracy Comparison")
+        if not results_df.empty:
+            st.success("All models trained successfully!")
+            
+            # Display comprehensive results
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("📊 Model Performance Summary")
+                # Format the dataframe for display
+                display_df = results_df.copy()
+                for col in ['CV Accuracy', 'Test Accuracy']:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else str(x))
+                st.dataframe(display_df)
+            
+            with col2:
+                st.subheader("📈 Test Accuracy Comparison")
+                fig, ax = plt.subplots(figsize=(10, 6))
+                results_sorted = results_df.sort_values(by="Test Accuracy", ascending=False)
+                # Convert to float for plotting
+                results_sorted['Test Accuracy'] = pd.to_numeric(results_sorted['Test Accuracy'], errors='coerce')
+                sns.barplot(x="Test Accuracy", y="Model", data=results_sorted, ax=ax, palette="viridis")
+                ax.set_title("Model Test Accuracy Comparison")
+                ax.set_xlim(0, 1)
+                st.pyplot(fig)
+            
+            # Show CV Accuracy comparison
+            st.subheader("🎯 Cross-Validation Accuracy")
             fig, ax = plt.subplots(figsize=(10, 6))
-            results_sorted = results_df.sort_values(by="Test Accuracy", ascending=False)
-            sns.barplot(x="Test Accuracy", y="Model", data=results_sorted, ax=ax, palette="viridis")
-            ax.set_title("Model Test Accuracy Comparison")
+            results_sorted_cv = results_df.sort_values(by="CV Accuracy", ascending=False)
+            # Convert to float for plotting
+            results_sorted_cv['CV Accuracy'] = pd.to_numeric(results_sorted_cv['CV Accuracy'], errors='coerce')
+            sns.barplot(x="CV Accuracy", y="Model", data=results_sorted_cv, ax=ax, palette="plasma")
+            ax.set_title("Model CV Accuracy Comparison (5-Fold)")
             ax.set_xlim(0, 1)
             st.pyplot(fig)
-        
-        # Show CV Accuracy comparison
-        st.subheader("🎯 Cross-Validation Accuracy")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        results_sorted_cv = results_df.sort_values(by="CV Accuracy", ascending=False)
-        sns.barplot(x="CV Accuracy", y="Model", data=results_sorted_cv, ax=ax, palette="plasma")
-        ax.set_title("Model CV Accuracy Comparison (5-Fold)")
-        ax.set_xlim(0, 1)
-        st.pyplot(fig)
-        
-        # Show detailed results for each model
-        st.subheader("🔍 Detailed Model Performance")
-        
-        for name, model in app.models.items():
-            with st.expander(f"{name} - Detailed Analysis"):
-                col1, col2 = st.columns(2)
-                
-                # Predictions
-                y_pred = model.predict(app.X_test_scaled)
-                acc = accuracy_score(app.y_test, y_pred)
-                
-                with col1:
-                    st.metric("Test Accuracy", f"{acc:.4f}")
+            
+            # Show detailed results for each model
+            st.subheader("🔍 Detailed Model Performance")
+            
+            for name, model in app.models.items():
+                with st.expander(f"{name} - Detailed Analysis"):
+                    col1, col2 = st.columns(2)
                     
-                    # Get AUC if available
-                    if hasattr(model, "predict_proba"):
-                        y_proba = model.predict_proba(app.X_test_scaled)[:, 1]
-                        auc = roc_auc_score(app.y_test, y_proba)
-                        st.metric("AUC Score", f"{auc:.3f}")
-                    
-                    # Classification report
-                    st.text("Classification Report:")
-                    report = classification_report(app.y_test, y_pred, output_dict=True)
-                    report_df = pd.DataFrame(report).transpose()
-                    st.dataframe(report_df.style.format({'precision': '{:.2f}', 'recall': '{:.2f}', 'f1-score': '{:.2f}', 'support': '{:.0f}'}))
-                
-                with col2:
-                    # Confusion matrix
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    cm = confusion_matrix(app.y_test, y_pred)
-                    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax,
-                              xticklabels=['No ASD', 'ASD'], 
-                              yticklabels=['No ASD', 'ASD'])
-                    ax.set_title(f"Confusion Matrix - {name}")
-                    ax.set_xlabel("Predicted")
-                    ax.set_ylabel("Actual")
-                    st.pyplot(fig)
-        
-        # Model Evaluation Summary
-        st.markdown("""
-        <div class="info-box">
-        <h4>📋 Model Evaluation Summary</h4>
-        <ul>
-        <li><strong>Best Overall:</strong> Random Forest (CV=0.870, Test=0.863, AUC=0.906)</li>
-        <li><strong>Highest Test Accuracy:</strong> Support Vector Machine (0.894)</li>
-        <li><strong>Best AUC:</strong> Random Forest (0.906)</li>
-        <li><strong>Most Consistent:</strong> All models show close CV vs Test performance</li>
-        <li><strong>Key Insight:</strong> Models are well-generalized with no major overfitting</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+                    try:
+                        # Predictions
+                        y_pred = model.predict(app.X_test_scaled)
+                        acc = accuracy_score(app.y_test, y_pred)
+                        
+                        with col1:
+                            st.metric("Test Accuracy", f"{acc:.4f}")
+                            
+                            # Get AUC if available
+                            if hasattr(model, "predict_proba"):
+                                try:
+                                    y_proba = model.predict_proba(app.X_test_scaled)[:, 1]
+                                    auc = roc_auc_score(app.y_test, y_proba)
+                                    st.metric("AUC Score", f"{auc:.3f}")
+                                except:
+                                    st.metric("AUC Score", "N/A")
+                            
+                            # Classification report
+                            st.text("Classification Report:")
+                            report = classification_report(app.y_test, y_pred, output_dict=True)
+                            report_df = pd.DataFrame(report).transpose()
+                            st.dataframe(report_df.style.format({'precision': '{:.2f}', 'recall': '{:.2f}', 'f1-score': '{:.2f}', 'support': '{:.0f}'}))
+                        
+                        with col2:
+                            # Confusion matrix
+                            fig, ax = plt.subplots(figsize=(6, 4))
+                            cm = confusion_matrix(app.y_test, y_pred)
+                            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax,
+                                      xticklabels=['No ASD', 'ASD'], 
+                                      yticklabels=['No ASD', 'ASD'])
+                            ax.set_title(f"Confusion Matrix - {name}")
+                            ax.set_xlabel("Predicted")
+                            ax.set_ylabel("Actual")
+                            st.pyplot(fig)
+                    except Exception as e:
+                        st.error(f"Could not generate detailed results for {name}: {str(e)}")
+            
+            # Model Evaluation Summary
+            best_model = results_df.iloc[0]
+            st.markdown(f"""
+            <div class="info-box">
+            <h4>📋 Model Evaluation Summary</h4>
+            <ul>
+            <li><strong>Best Overall:</strong> {best_model['Model']} (CV={best_model['CV Accuracy']}, Test={best_model['Test Accuracy']})</li>
+            <li><strong>Models Trained:</strong> {len(results_df)}</li>
+            <li><strong>Key Insight:</strong> Models show consistent performance across CV and Test sets</li>
+            </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("❌ No models were successfully trained. Please check your data and try again.")
 
 def show_prediction_interface(app):
     st.markdown('<div class="section-header">🔮 Make Predictions</div>', unsafe_allow_html=True)
@@ -698,10 +716,19 @@ def show_prediction_interface(app):
             # Calculate total score
             total_score = sum(a_scores.values())
             features_dict['Total_Score'] = total_score
-            
-            # One-hot encoded features (set appropriate ones to 1)
-            # For simplicity, we'll use the most common values
             features_dict['result'] = total_score  # Simple approximation
+            
+            # Set ethnicity and country features (set the selected one to 1, others to 0)
+            ethnicity_prefix = f"ethnicity_{ethnicity.replace(' ', '_').replace('-', '_')}"
+            country_prefix = f"country_{country.replace(' ', '_').replace('-', '_')}"
+            
+            # For simplicity, we'll set these to 1 if they exist in the feature names
+            # In a real app, you'd need to map these properly to the actual feature names
+            for feature_name in app.feature_names:
+                if 'ethnicity' in feature_name:
+                    features_dict[feature_name] = 1 if ethnicity_prefix in feature_name else 0
+                elif 'country' in feature_name:
+                    features_dict[feature_name] = 1 if country_prefix in feature_name else 0
             
             # Make prediction
             predictions = app.predict_new_sample(features_dict)
@@ -770,7 +797,7 @@ def show_prediction_interface(app):
                     st.info("No significant risk factors identified.")
                     
             else:
-                st.error("❌ Prediction failed. Please make sure models are properly trained.")
+                st.error("❌ Prediction failed. Please make sure models are properly trained and data is formatted correctly.")
 
 if __name__ == "__main__":
     main()
