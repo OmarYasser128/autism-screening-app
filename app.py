@@ -14,7 +14,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from scipy.stats import chi2_contingency, ttest_ind
 import io
 import warnings
-import pickle
 warnings.filterwarnings("ignore")
 
 # Try to import optional packages with fallbacks
@@ -137,8 +136,7 @@ class AutismScreeningApp:
         screening_cols = [col for col in self.df.columns if 'A' in col and '_Score' in col]
         self.df['Total_Score'] = self.df[screening_cols].sum(axis=1)
         
-        # Encoding for modeling - FIXED: Only encode numeric columns
-        # First convert categorical columns to numeric
+        # Encoding for modeling
         binary_mappings = {
             'used_app_before': {'no': 0, 'yes': 1},
             'relation': {'Self': 0, 'Others': 1},
@@ -162,7 +160,7 @@ class AutismScreeningApp:
         self.df = pd.concat([self.df, country_dummies], axis=1)
         self.df.drop(['contry_of_res', 'country_encoded'], axis=1, inplace=True)
         
-        # Remove any remaining non-numeric columns except target
+        # Remove any remaining non-numeric columns except target and gender_label
         non_numeric_cols = self.df.select_dtypes(include=['object']).columns
         for col in non_numeric_cols:
             if col != 'Class/ASD' and col != 'gender_label':
@@ -189,7 +187,7 @@ class AutismScreeningApp:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        # Scale features - FIXED: Ensure we only scale numeric data
+        # Scale features
         self.X_train_scaled = self.scaler.fit_transform(X_train)
         self.X_test_scaled = self.scaler.transform(X_test)
         
@@ -282,6 +280,9 @@ class AutismScreeningApp:
             for i, feature in enumerate(self.feature_names):
                 if feature in features_dict:
                     features[i] = features_dict[feature]
+                else:
+                    # Set default value for missing features
+                    features[i] = 0
             
             # Scale the features
             features_scaled = self.scaler.transform([features])
@@ -344,28 +345,34 @@ def main():
     uploaded_file = st.sidebar.file_uploader("Upload your dataset (CSV)", type=['csv'])
     
     if uploaded_file is not None:
-        if not app.df or st.sidebar.button("Reload Data"):
+        # Check if we need to load data
+        data_loaded = app.df is not None and not app.df.empty
+        
+        if not data_loaded or st.sidebar.button("Reload Data"):
             with st.spinner('Loading and preprocessing data...'):
                 try:
                     df = app.load_data(uploaded_file)
-                    st.success("Data loaded successfully!")
+                    st.success("✅ Data loaded successfully!")
+                    data_loaded = True
                 except Exception as e:
-                    st.error(f"Error loading data: {str(e)}")
+                    st.error(f"❌ Error loading data: {str(e)}")
                     return
         else:
             df = app.df
+            data_loaded = True
         
-        if page == "Data Overview":
-            show_data_overview(df)
-        
-        elif page == "Exploratory Analysis":
-            show_enhanced_eda(df)
-        
-        elif page == "Advanced Model Training":
-            show_advanced_model_training(app)
-        
-        elif page == "Make Prediction":
-            show_prediction_interface(app)
+        if data_loaded:
+            if page == "Data Overview":
+                show_data_overview(df)
+            
+            elif page == "Exploratory Analysis":
+                show_enhanced_eda(df)
+            
+            elif page == "Advanced Model Training":
+                show_advanced_model_training(app)
+            
+            elif page == "Make Prediction":
+                show_prediction_interface(app)
     
     else:
         st.info("👈 Please upload a CSV file to get started")
@@ -549,7 +556,7 @@ def show_advanced_model_training(app):
             results_df = app.train_enhanced_models()
         
         if not results_df.empty:
-            st.success("All models trained successfully!")
+            st.success("✅ All models trained successfully!")
             
             # Display which model was selected as best
             if app.best_model_name:
@@ -565,19 +572,12 @@ def show_advanced_model_training(app):
             
             with col1:
                 st.subheader("📊 Model Performance Summary")
-                # Format the dataframe for display
-                display_df = results_df.copy()
-                for col in ['CV Accuracy', 'Test Accuracy']:
-                    if col in display_df.columns:
-                        display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else str(x))
-                st.dataframe(display_df)
+                st.dataframe(results_df)
             
             with col2:
                 st.subheader("📈 Test Accuracy Comparison")
                 fig, ax = plt.subplots(figsize=(10, 6))
                 results_sorted = results_df.sort_values(by="Test Accuracy", ascending=False)
-                # Convert to float for plotting
-                results_sorted['Test Accuracy'] = pd.to_numeric(results_sorted['Test Accuracy'], errors='coerce')
                 sns.barplot(x="Test Accuracy", y="Model", data=results_sorted, ax=ax, palette="viridis")
                 ax.set_title("Model Test Accuracy Comparison")
                 ax.set_xlim(0, 1)
@@ -587,8 +587,6 @@ def show_advanced_model_training(app):
             st.subheader("🎯 Cross-Validation Accuracy")
             fig, ax = plt.subplots(figsize=(10, 6))
             results_sorted_cv = results_df.sort_values(by="CV Accuracy", ascending=False)
-            # Convert to float for plotting
-            results_sorted_cv['CV Accuracy'] = pd.to_numeric(results_sorted_cv['CV Accuracy'], errors='coerce')
             sns.barplot(x="CV Accuracy", y="Model", data=results_sorted_cv, ax=ax, palette="plasma")
             ax.set_title("Model CV Accuracy Comparison (5-Fold)")
             ax.set_xlim(0, 1)
@@ -600,9 +598,10 @@ def show_advanced_model_training(app):
             <div class="info-box">
             <h4>📋 Model Evaluation Summary</h4>
             <ul>
-            <li><strong>Best Model:</strong> {best_model['Model']} (CV={best_model['CV Accuracy']}, Test={best_model['Test Accuracy']})</li>
+            <li><strong>Best Model:</strong> {best_model['Model']}</li>
+            <li><strong>CV Accuracy:</strong> {best_model['CV Accuracy']}</li>
+            <li><strong>Test Accuracy:</strong> {best_model['Test Accuracy']}</li>
             <li><strong>Models Trained:</strong> {len(results_df)}</li>
-            <li><strong>Key Insight:</strong> Models show consistent performance across CV and Test sets</li>
             <li><strong>Ready for Predictions:</strong> Best model is saved and ready to use</li>
             </ul>
             </div>
@@ -626,7 +625,6 @@ def show_prediction_interface(app):
     <div class="success-box">
     <h4>✅ Ready for Predictions!</h4>
     <p>Using <strong>{app.best_model_name}</strong> - the best performing model from training.</p>
-    <p>CV Accuracy: {getattr(app, 'best_model_cv_score', 'N/A')} | Test Accuracy: {getattr(app, 'best_model_test_score', 'N/A')}</p>
     </div>
     """)
     
@@ -693,16 +691,18 @@ def show_prediction_interface(app):
             features_dict['Total_Score'] = total_score
             features_dict['result'] = total_score  # Simple approximation
             
-            # Set ethnicity and country features (set the selected one to 1, others to 0)
-            ethnicity_prefix = f"ethnicity_{ethnicity.replace(' ', '_').replace('-', '_')}"
-            country_prefix = f"country_{country.replace(' ', '_').replace('-', '_')}"
-            
-            # For simplicity, we'll set these to 1 if they exist in the feature names
+            # Set ethnicity and country features
+            # For the prediction, we'll use a simplified approach
+            # In a real application, you'd need proper feature mapping
             for feature_name in app.feature_names:
                 if 'ethnicity' in feature_name:
-                    features_dict[feature_name] = 1 if ethnicity_prefix in feature_name else 0
+                    # Set the selected ethnicity to 1, others to 0
+                    ethnicity_feature = f"ethnicity_{ethnicity.replace(' ', '_').replace('-', '_')}"
+                    features_dict[feature_name] = 1 if ethnicity_feature in feature_name else 0
                 elif 'country' in feature_name:
-                    features_dict[feature_name] = 1 if country_prefix in feature_name else 0
+                    # Set the selected country to 1, others to 0
+                    country_feature = f"country_{country.replace(' ', '_').replace('-', '_')}"
+                    features_dict[feature_name] = 1 if country_feature in feature_name else 0
             
             # Make prediction using the best model
             prediction = app.predict_single_sample(features_dict)
