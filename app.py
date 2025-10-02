@@ -370,21 +370,32 @@ def show_team_introduction():
         </p>
         
         <div class="team-section">Project Team</div>
-        
+
         <div class="team-member">
-            <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong>
+            <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong><br>
+            <a href="https://www.linkedin.com/in/omar-yasser-mahrous" target="_blank" style="color: white; text-decoration: none; font-size: 1.1rem;">
+                LinkedIn Profile
+            </a>
         </div>
-        
+
         <div class="team-member">
-            <strong style="font-size: 1.3rem;">Marwan Aly</strong>
+            <strong style="font-size: 1.3rem;">Marwan Aly</strong><br>
+            <a href="https://www.linkedin.com/in/marwanalymohamed" target="_blank" style="color: white; text-decoration: none; font-size: 1.1rem;">
+                LinkedIn Profile
+            </a>
         </div>
-        
+
         <div class="team-member">
-            <strong style="font-size: 1.3rem;">Nouran Ashraf</strong>
+            <strong style="font-size: 1.3rem;">Nouran Ashraf</strong><br>
+            <a href="https://www.linkedin.com/in/nouran-ashraf-5644811ab/" target="_blank" style="color: white; text-decoration: none; font-size: 1.1rem;">
+                LinkedIn Profile
+            </a>
         </div>
-        
-        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.2); border-radius: 8px; text-align: center;">
-            <strong style="font-size: 1.2rem;">Facilitator: Eng. Sara Baza</strong>
+
+        <div class="team-section" style="margin-top: 1.5rem;">Facilitator</div>
+
+        <div class="team-member">
+            <strong style="font-size: 1.3rem;">Eng. Sara Baza</strong>
         </div>
     </div>
     """, unsafe_allow_html=True)
