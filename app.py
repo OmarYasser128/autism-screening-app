@@ -68,6 +68,26 @@ st.markdown("""
         color: white;
         text-align: center;
     }
+    .team-header {
+        font-size: 2.8rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 2.5rem;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        font-family: 'Arial', sans-serif;
+        font-weight: bold;
+    }
+    .team-info {
+        background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
@@ -114,13 +134,6 @@ st.markdown("""
     }
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    .sidebar .sidebar-content {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    .css-1d391kg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -281,7 +294,7 @@ class AutismScreeningApp:
             self.best_model = self.models[best_model_name]
             self.best_model_name = best_model_name
             
-            st.info(f"🎯 Best model selected: **{best_model_name}** (Test Accuracy: {results_df.loc[best_idx, 'Test Accuracy']})")
+            st.info(f"Best model selected: **{best_model_name}** (Test Accuracy: {results_df.loc[best_idx, 'Test Accuracy']})")
             
             return results_df.sort_values(by="Test Accuracy", ascending=False)
         else:
@@ -324,14 +337,159 @@ class AutismScreeningApp:
             st.error(f"Prediction error: {str(e)}")
             return None
 
-def main():
-    st.markdown('<div class="main-header">🧠 Autism Screening Prediction App</div>', unsafe_allow_html=True)
+def show_team_introduction():
+    """Display team introduction page with blue backgrounds"""
+    st.markdown('<div class="team-header">SIC-702 Group 7</div>', unsafe_allow_html=True)
     
+    st.markdown("""
+    <div class="team-info">
+        <h2 style="text-align: center; margin-bottom: 1.5rem;">Autism Spectrum Disorder Screening Application</h2>
+        <p style="text-align: center; font-size: 1.1rem; margin-bottom: 2rem;">
+            A comprehensive machine learning application for early detection and screening of Autism Spectrum Disorder
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Project Team Section
+    st.markdown("### Project Team")
+    
+    # Create columns for team members
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; 
+                    border-radius: 15px; 
+                    text-align: center; 
+                    color: white;
+                    margin: 1rem 0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
+            <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong><br><br>
+            <a href="https://www.linkedin.com/in/omar-yasser-mahrous" target="_blank" 
+               style="color: white; text-decoration: none; font-size: 1rem;
+                      background: rgba(255,255,255,0.2); 
+                      padding: 0.5rem 1rem; 
+                      border-radius: 25px;
+                      display: inline-block;
+                      margin-top: 0.5rem;">
+                LinkedIn Profile
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; 
+                    border-radius: 15px; 
+                    text-align: center; 
+                    color: white;
+                    margin: 1rem 0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
+            <strong style="font-size: 1.3rem;">Marwan Aly</strong><br><br>
+            <a href="https://www.linkedin.com/in/marwanalymohamed" target="_blank" 
+               style="color: white; text-decoration: none; font-size: 1rem;
+                      background: rgba(255,255,255,0.2); 
+                      padding: 0.5rem 1rem; 
+                      border-radius: 25px;
+                      display: inline-block;
+                      margin-top: 0.5rem;">
+                LinkedIn Profile
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; 
+                    border-radius: 15px; 
+                    text-align: center; 
+                    color: white;
+                    margin: 1rem 0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
+            <strong style="font-size: 1.3rem;">Nouran Ashraf</strong><br><br>
+            <a href="https://www.linkedin.com/in/nouran-ashraf-5644811ab/" target="_blank" 
+               style="color: white; text-decoration: none; font-size: 1rem;
+                      background: rgba(255,255,255,0.2); 
+                      padding: 0.5rem 1rem; 
+                      border-radius: 25px;
+                      display: inline-block;
+                      margin-top: 0.5rem;">
+                LinkedIn Profile
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Facilitator Section (without blue background)
+    st.markdown("### Facilitator")
+    
+    st.markdown("""
+    <div style="text-align: center; 
+                padding: 1.5rem; 
+                margin: 1rem 0;">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #2c3e50;">●</div>
+        <strong style="font-size: 1.5rem; color: #2c3e50;">Eng. Sara Baza</strong>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Project description
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+                padding: 2rem; 
+                border-radius: 15px; 
+                color: white;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h3 style="text-align: center; margin-bottom: 1.5rem;">Project Overview</h3>
+        <p style="text-align: center; font-size: 1.1rem; margin-bottom: 1.5rem;">
+            This application utilizes advanced machine learning algorithms to screen for Autism Spectrum Disorder (ASD) 
+            based on behavioral and demographic features. The system provides comprehensive data analysis, model training, 
+            and prediction capabilities to assist in early detection and screening.
+        </p>
+        
+        <h4 style="text-align: center; margin-bottom: 1rem;">Key Features:</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
+                Comprehensive data exploration and visualization
+            </div>
+            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
+                Multiple machine learning model training
+            </div>
+            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
+                Automated best model selection
+            </div>
+            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
+                Interactive prediction interface
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def main():
     # Initialize app in session state
     if 'app' not in st.session_state:
         st.session_state.app = AutismScreeningApp()
     
     app = st.session_state.app
+    
+    # Sidebar for navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", [
+        "Team Introduction",
+        "Data Overview", 
+        "Exploratory Analysis", 
+        "Advanced Model Training",
+        "Make Prediction"
+    ])
     
     # Show package availability status
     unavailable_models = []
@@ -343,27 +501,27 @@ def main():
         unavailable_models.append("CatBoost")
     
     if unavailable_models:
-        st.markdown(f"""
+        st.sidebar.markdown(f"""
         <div class="warning-box">
-        <h4>⚠️ Package Availability Notice</h4>
+        <h4>Package Availability Notice</h4>
         <p>Some advanced models may not be available: {', '.join(unavailable_models)}</p>
         <p>The app will work with available models.</p>
         </div>
         """, unsafe_allow_html=True)
     
-    # Sidebar for navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", [
-        "Data Overview", 
-        "Exploratory Analysis", 
-        "Advanced Model Training",
-        "Make Prediction"
-    ])
-    
-    # File upload
-    uploaded_file = st.sidebar.file_uploader("Upload your dataset (CSV)", type=['csv'])
-    
-    if uploaded_file is not None:
+    # File upload in sidebar
+    st.sidebar.markdown("### Upload your dataset (CSV)")
+    uploaded_file = st.sidebar.file_uploader(
+        "Drag and drop file here", 
+        type=['csv'],
+        help="Limit 200MB per file - CSV",
+        label_visibility="collapsed"
+    )
+
+    if page == "Team Introduction":
+        show_team_introduction()
+        
+    elif uploaded_file is not None:
         # Check if we need to load data
         data_loaded = app.df is not None and not app.df.empty
         
@@ -371,7 +529,7 @@ def main():
             with st.spinner('Loading and preprocessing data...'):
                 try:
                     df = app.load_data(uploaded_file)
-                    st.success("✅ Data loaded successfully!")
+                    st.success("Data loaded successfully!")
                     data_loaded = True
                     
                     # Reset training state when new data is loaded
@@ -383,7 +541,7 @@ def main():
                         del st.session_state.best_model_info
                         
                 except Exception as e:
-                    st.error(f"❌ Error loading data: {str(e)}")
+                    st.error(f"Error loading data: {str(e)}")
                     return
         else:
             df = app.df
@@ -403,38 +561,39 @@ def main():
                 show_prediction_interface(app)
     
     else:
-        st.info("👈 Please upload a CSV file to get started")
-        
-        # Show sample of expected data format
-        st.subheader("Expected Data Format")
-        sample_data = {
-            'ID': [1, 2, 3],
-            'A1_Score': [1, 0, 1],
-            'A2_Score': [0, 1, 0],
-            'A3_Score': [1, 1, 0],
-            'A4_Score': [0, 0, 1],
-            'A5_Score': [1, 0, 1],
-            'A6_Score': [0, 1, 0],
-            'A7_Score': [1, 1, 0],
-            'A8_Score': [0, 0, 1],
-            'A9_Score': [1, 0, 1],
-            'A10_Score': [0, 1, 0],
-            'age': [25, 30, 35],
-            'gender': ['m', 'f', 'm'],
-            'ethnicity': ['White-European', 'Asian', 'Middle Eastern'],
-            'jaundice': ['no', 'yes', 'no'],
-            'austim': ['no', 'yes', 'no'],
-            'contry_of_res': ['United States', 'India', 'United Kingdom'],
-            'used_app_before': ['no', 'yes', 'no'],
-            'result': [7, 5, 6],
-            'age_desc': ['18+', '18+', '18+'],
-            'relation': ['Self', 'Parent', 'Self'],
-            'Class/ASD': ['YES', 'NO', 'YES']
-        }
-        st.dataframe(pd.DataFrame(sample_data))
+        if page != "Team Introduction":
+            st.info("Please upload a CSV file to get started")
+            
+            # Show sample of expected data format
+            st.subheader("Expected Data Format")
+            sample_data = {
+                'ID': [1, 2, 3],
+                'A1_Score': [1, 0, 1],
+                'A2_Score': [0, 1, 0],
+                'A3_Score': [1, 1, 0],
+                'A4_Score': [0, 0, 1],
+                'A5_Score': [1, 0, 1],
+                'A6_Score': [0, 1, 0],
+                'A7_Score': [1, 1, 0],
+                'A8_Score': [0, 0, 1],
+                'A9_Score': [1, 0, 1],
+                'A10_Score': [0, 1, 0],
+                'age': [25, 30, 35],
+                'gender': ['m', 'f', 'm'],
+                'ethnicity': ['White-European', 'Asian', 'Middle Eastern'],
+                'jaundice': ['no', 'yes', 'no'],
+                'austim': ['no', 'yes', 'no'],
+                'contry_of_res': ['United States', 'India', 'United Kingdom'],
+                'used_app_before': ['no', 'yes', 'no'],
+                'result': [7, 5, 6],
+                'age_desc': ['18+', '18+', '18+'],
+                'relation': ['Self', 'Parent', 'Self'],
+                'Class/ASD': ['YES', 'NO', 'YES']
+            }
+            st.dataframe(pd.DataFrame(sample_data))
 
 def show_data_overview(df):
-    st.markdown('<div class="section-header">📊 Data Overview</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Data Overview</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
@@ -461,7 +620,7 @@ def show_data_overview(df):
         st.dataframe(missing_df)
 
 def show_enhanced_eda(df):
-    st.markdown('<div class="section-header">📈 Enhanced Exploratory Data Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Enhanced Exploratory Data Analysis</div>', unsafe_allow_html=True)
     
     # Create a copy for EDA
     df_eda = df.copy()
@@ -469,7 +628,7 @@ def show_enhanced_eda(df):
     # Dataset Overview - From your EDA notebook
     st.markdown("""
     <div class="info-box">
-    <h4>📋 Dataset Overview</h4>
+    <h4>Dataset Overview</h4>
     <ul>
     <li><strong>Shape:</strong> 800 rows × 21 columns (after preprocessing)</li>
     <li><strong>Feature Types:</strong> Mixed numerical and encoded categorical</li>
@@ -481,7 +640,7 @@ def show_enhanced_eda(df):
     """, unsafe_allow_html=True)
     
     # 1. Target distribution by Gender - From your EDA
-    st.subheader("🎯 Target Distribution by Gender")
+    st.subheader("Target Distribution by Gender")
     df_eda['gender_label'] = df_eda['gender'].map({0: 'Male', 1: 'Female'})
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.countplot(x='gender_label', hue='Class/ASD', data=df_eda, palette='coolwarm', ax=ax)
@@ -490,7 +649,7 @@ def show_enhanced_eda(df):
     st.pyplot(fig)
     
     # 2. Age distribution - From your EDA
-    st.subheader("📊 Age Distribution")
+    st.subheader("Age Distribution")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -514,17 +673,17 @@ def show_enhanced_eda(df):
         """, unsafe_allow_html=True)
     
     # 3. Screening questions correlation - From your EDA
-    st.subheader("📝 Screening Questions Correlation")
+    st.subheader("Screening Questions Correlation")
     screening_cols = [col for col in df_eda.columns if 'A' in col and '_Score' in col]
     if screening_cols:
         fig, ax = plt.subplots(figsize=(12, 8))
         correlation_matrix = df_eda[screening_cols].corr()
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', ax=ax, fmt='.2f')
-        ax.set_title('Correlation Heatmap of Screening Questions (A1–A10)')
+        ax.set_title('Correlation Heatmap of Screening Questions (A1-A10)')
         st.pyplot(fig)
     
     # 4. Calculate and show Total Score distribution - From your EDA
-    st.subheader("📊 Total Screening Score Distribution")
+    st.subheader("Total Screening Score Distribution")
     df_eda['Total_Score'] = df_eda[screening_cols].sum(axis=1)
     
     col1, col2 = st.columns(2)
@@ -532,7 +691,7 @@ def show_enhanced_eda(df):
     with col1:
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.histplot(df_eda['Total_Score'], bins=10, kde=False, color='orange', ax=ax)
-        ax.set_title('Distribution of Total Screening Score (A1–A10)')
+        ax.set_title('Distribution of Total Screening Score (A1-A10)')
         ax.set_xlabel('Total Score')
         ax.set_ylabel('Count')
         st.pyplot(fig)
@@ -550,7 +709,7 @@ def show_enhanced_eda(df):
         """, unsafe_allow_html=True)
     
     # 5. Correlation with target - From your EDA
-    st.subheader("🔗 Correlation with Target Variable")
+    st.subheader("Correlation with Target Variable")
     numeric_cols = df_eda.select_dtypes(include=[np.number]).columns
     if 'Class/ASD' in numeric_cols:
         fig, ax = plt.subplots(figsize=(8, 10))
@@ -561,7 +720,7 @@ def show_enhanced_eda(df):
         st.pyplot(fig)
     
     # 6. Feature importance - From your EDA
-    st.subheader("🎯 Feature Importance Analysis")
+    st.subheader("Feature Importance Analysis")
     
     try:
         # Prepare data for feature importance
@@ -582,17 +741,17 @@ def show_enhanced_eda(df):
         st.pyplot(fig)
         
         # Display top features
-        st.write("**Top 15 Important Features:**")
+        st.write("Top 15 Important Features:")
         st.dataframe(importances.head(15).reset_index().rename(columns={'index': 'Feature', 0: 'Importance'}))
     except Exception as e:
         st.warning(f"Feature importance analysis skipped: {str(e)}")
 
 def show_advanced_model_training(app):
-    st.markdown('<div class="section-header">🤖 Advanced Model Training & Evaluation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Advanced Model Training & Evaluation</div>', unsafe_allow_html=True)
     
     st.markdown("""
     <div class="info-box">
-    <h4>🎯 Enhanced Modeling Approach</h4>
+    <h4>Enhanced Modeling Approach</h4>
     <ul>
     <li><strong>Multiple Algorithms</strong> including ensemble methods</li>
     <li><strong>5-Fold Stratified Cross Validation</strong> for robust evaluation</li>
@@ -604,7 +763,7 @@ def show_advanced_model_training(app):
     
     # Check if models are already trained in session state
     if 'model_trained' in st.session_state and st.session_state.model_trained:
-        st.success("✅ Models already trained! Results loaded from session.")
+        st.success("Models already trained! Results loaded from session.")
         
         # Load results from session state
         results_df = st.session_state.training_results
@@ -617,9 +776,9 @@ def show_advanced_model_training(app):
         if app.best_model_name:
             st.markdown(f"""
             <div class="success-box">
-            <h4>✅ Best Model Selected: {app.best_model_name}</h4>
+            <h4>Best Model Selected: {app.best_model_name}</h4>
             <p><strong>Selection Method:</strong> Highest Test Accuracy</p>
-            <p>This model will be used for predictions in the <strong>Make Prediction</strong> page.</p>
+            <p>This model will be used for predictions in the Make Prediction page.</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -627,11 +786,11 @@ def show_advanced_model_training(app):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("📊 Model Performance Summary")
+            st.subheader("Model Performance Summary")
             st.dataframe(results_df)
         
         with col2:
-            st.subheader("📈 Test Accuracy Comparison")
+            st.subheader("Test Accuracy Comparison")
             fig, ax = plt.subplots(figsize=(10, 6))
             results_sorted = results_df.sort_values(by="Test Accuracy", ascending=False)
             colors = ['red' if x == app.best_model_name else 'steelblue' for x in results_sorted['Model']]
@@ -641,10 +800,10 @@ def show_advanced_model_training(app):
             st.pyplot(fig)
         
         # Show detailed results for each model
-        st.subheader("🔍 Detailed Model Performance")
+        st.subheader("Detailed Model Performance")
         
         for name, model in app.models.items():
-            with st.expander(f"{name} - Detailed Results {'⭐' if name == app.best_model_name else ''}"):
+            with st.expander(f"{name} - Detailed Results {'(Best Model)' if name == app.best_model_name else ''}"):
                 col1, col2 = st.columns(2)
                 
                 try:
@@ -688,7 +847,7 @@ def show_advanced_model_training(app):
         best_row = results_df[results_df['Model'] == app.best_model_name].iloc[0]
         st.markdown(f"""
         <div class="info-box">
-        <h4>📋 Model Evaluation Summary</h4>
+        <h4>Model Evaluation Summary</h4>
         <ul>
         <li><strong>Best Model:</strong> {app.best_model_name}</li>
         <li><strong>CV Accuracy:</strong> {best_row['CV Accuracy']}</li>
@@ -702,7 +861,7 @@ def show_advanced_model_training(app):
         """, unsafe_allow_html=True)
         
         # Option to retrain
-        if st.button("🔄 Retrain Models"):
+        if st.button("Retrain Models"):
             with st.spinner('Retraining all models... This may take a few minutes.'):
                 results_df = app.train_enhanced_models()
             
@@ -716,12 +875,12 @@ def show_advanced_model_training(app):
                     'all_models': app.models
                 }
                 
-                st.success("✅ Models retrained successfully!")
+                st.success("Models retrained successfully!")
                 st.rerun()
     
     else:
         # Models not trained yet
-        if st.button("🚀 Train All Advanced Models", type="primary"):
+        if st.button("Train All Advanced Models", type="primary"):
             with st.spinner('Training advanced models with cross-validation... This may take a few minutes.'):
                 results_df = app.train_enhanced_models()
             
@@ -735,20 +894,20 @@ def show_advanced_model_training(app):
                     'all_models': app.models
                 }
                 
-                st.success("✅ All models trained successfully!")
+                st.success("All models trained successfully!")
                 st.rerun()
             else:
-                st.error("❌ No models were successfully trained. Please check your data and try again.")
+                st.error("No models were successfully trained. Please check your data and try again.")
 
 def show_prediction_interface(app):
-    st.markdown('<div class="section-header">🔮 Make Predictions</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Make Predictions</div>', unsafe_allow_html=True)
     
     # Check if models are trained (either in app or session state)
     if not app.is_trained and ('model_trained' not in st.session_state or not st.session_state.model_trained):
         st.warning("""
-        ⚠️ **Please train the models first!**
+        **Please train the models first!**
         
-        Go to the **Advanced Model Training** page and click **"Train All Advanced Models"**.
+        Go to the Advanced Model Training page and click "Train All Advanced Models".
         Once training is complete, the best model will be automatically saved and ready for predictions.
         """)
         return
@@ -762,20 +921,20 @@ def show_prediction_interface(app):
     
     st.markdown(f"""
     <div class="success-box">
-    <h4>✅ Ready for Predictions!</h4>
+    <h4>Ready for Predictions!</h4>
     <p>Using <strong>{app.best_model_name}</strong> - the best performing model from training.</p>
     </div>
     """)
     
     st.markdown("""
     <div class="info-box">
-    <h4>📋 Prediction Instructions</h4>
+    <h4>Prediction Instructions</h4>
     <p>Enter the patient's information below to get ASD prediction using our best trained model.</p>
     </div>
     """)
     
     # Create input form
-    st.subheader("👤 Patient Information")
+    st.subheader("Patient Information")
     
     col1, col2, col3 = st.columns(3)
     
@@ -799,7 +958,7 @@ def show_prediction_interface(app):
                                     'Australia', 'Canada', 'Jordan', 'United Arab Emirates', 'Others'])
     
     # Screening Questions
-    st.subheader("📝 Screening Questions (A1-A10)")
+    st.subheader("Screening Questions (A1-A10)")
     st.write("Answer the following questions (0 = No, 1 = Yes):")
     
     a_scores = {}
@@ -808,7 +967,7 @@ def show_prediction_interface(app):
         with cols[(i-1) % 5]:
             a_scores[f'A{i}_Score'] = st.selectbox(f"A{i} Score", options=[0, 1], key=f"a{i}")
     
-    if st.button("🎯 Get ASD Prediction", type="primary"):
+    if st.button("Get ASD Prediction", type="primary"):
         with st.spinner('Analyzing patient information...'):
             # Prepare features dictionary
             features_dict = {}
@@ -845,15 +1004,14 @@ def show_prediction_interface(app):
             if prediction:
                 # Display results
                 st.markdown("---")
-                st.subheader("📊 Prediction Result")
+                st.subheader("Prediction Result")
                 
                 # Overall prediction
                 color = "red" if prediction['prediction'] == 1 else "green"
-                icon = "🔴" if prediction['prediction'] == 1 else "🟢"
                 
                 st.markdown(f"""
                 <div class="prediction-box">
-                <h2>{icon} Prediction: <span style="color: {color};">{prediction['label']}</span></h2>
+                <h2>Prediction: <span style="color: {color};">{prediction['label']}</span></h2>
                 <p><strong>Model Used:</strong> {prediction['model_used']}</p>
                 <p><strong>Confidence:</strong> {prediction['confidence']:.1%}</p>
                 <p><strong>Screening Score:</strong> {total_score}/10</p>
@@ -861,25 +1019,25 @@ def show_prediction_interface(app):
                 """, unsafe_allow_html=True)
                 
                 # Interpretation
-                st.subheader("💡 Interpretation")
+                st.subheader("Interpretation")
                 if prediction['prediction'] == 1:
                     if prediction['confidence'] >= 0.8:
                         st.error("""
-                        🚨 **High probability of ASD** 
+                        **High probability of ASD** 
                         
                         The model indicates a strong likelihood of Autism Spectrum Disorder. 
                         Further clinical evaluation is strongly recommended.
                         """)
                     elif prediction['confidence'] >= 0.6:
                         st.warning("""
-                        ⚠️ **Moderate probability of ASD**
+                        **Moderate probability of ASD**
                         
                         The model suggests possible Autism Spectrum Disorder.
                         Additional screening and professional evaluation are recommended.
                         """)
                     else:
                         st.warning("""
-                        ⚠️ **Low probability of ASD**
+                        **Low probability of ASD**
                         
                         The model indicates some signs of ASD but with lower confidence.
                         Consider follow-up screening.
@@ -887,21 +1045,21 @@ def show_prediction_interface(app):
                 else:
                     if prediction['confidence'] >= 0.8:
                         st.success("""
-                        ✅ **Low probability of ASD**
+                        **Low probability of ASD**
                         
                         The model indicates a low likelihood of Autism Spectrum Disorder.
                         No immediate concerns based on the provided information.
                         """)
                     else:
                         st.info("""
-                        ℹ️ **Inconclusive result**
+                        **Inconclusive result**
                         
                         The model could not make a confident prediction.
                         Consider providing more information or consulting a professional.
                         """)
                 
                 # Risk factors analysis
-                st.subheader("🔍 Risk Factors Analysis")
+                st.subheader("Risk Factors Analysis")
                 risk_factors = []
                 if autism_history == 'yes':
                     risk_factors.append("Family history of autism")
@@ -920,13 +1078,13 @@ def show_prediction_interface(app):
                 # Disclaimer
                 st.markdown("---")
                 st.info("""
-                **⚠️ Important Disclaimer:** 
+                **Important Disclaimer:** 
                 This prediction is based on machine learning models and should not be considered a medical diagnosis. 
                 Always consult with qualified healthcare professionals for proper assessment and diagnosis.
                 """)
                     
             else:
-                st.error("❌ Prediction failed. Please make sure the model is properly trained and data is formatted correctly.")
+                st.error("Prediction failed. Please make sure the model is properly trained and data is formatted correctly.")
 
 if __name__ == "__main__":
     main()
