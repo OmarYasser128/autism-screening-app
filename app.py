@@ -46,6 +46,48 @@ st.set_page_config(
 # Custom CSS for better styling
 st.markdown("""
 <style>
+    .main-header {
+        font-size: 2.5rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-weight: bold;
+    }
+    .section-header {
+        font-size: 1.5rem;
+        color: #2c3e50;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #bdc3c7;
+        font-weight: bold;
+    }
+    .team-member {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #3498db;
+        margin-bottom: 1rem;
+    }
+    .facilitator-card {
+        background-color: #e8f4f8;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #e74c3c;
+        margin-bottom: 1rem;
+    }
+    .upload-box {
+        border: 2px dashed #bdc3c7;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        background-color: #ecf0f1;
+        margin: 1rem 0;
+    }
+    .nav-button {
+        width: 100%;
+        margin: 0.2rem 0;
+        text-align: left;
+    }
     .team-header {
         font-size: 2.8rem;
         text-align: center;
@@ -73,42 +115,6 @@ st.markdown("""
         border-radius: 10px;
         color: white;
         margin: 1rem 0;
-    }
-    .team-member {
-        text-align: center;
-        background: rgba(255,255,255,0.1);
-        padding: 1.2rem;
-        margin: 0.8rem 0;
-        border-radius: 10px;
-        border-left: 4px solid #3498db;
-    }
-    .main-header {
-        font-size: 2.5rem;
-        text-align: center;
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        color: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .section-header {
-        font-size: 1.5rem;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        color: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .info-box {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -145,16 +151,6 @@ st.markdown("""
         margin: 10px 0;
         color: #155724;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    .sidebar .sidebar-content {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    .css-1d391kg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -420,35 +416,11 @@ def show_team_introduction():
     """, unsafe_allow_html=True)
 
 def main():
-    # Show team introduction as the first page
-    show_team_introduction()
-    
-    st.markdown("---")
-    st.markdown('<div class="main-header">Autism Screening Prediction Application</div>', unsafe_allow_html=True)
-    
     # Initialize app in session state
     if 'app' not in st.session_state:
         st.session_state.app = AutismScreeningApp()
     
     app = st.session_state.app
-    
-    # Show package availability status
-    unavailable_models = []
-    if not XGB_AVAILABLE:
-        unavailable_models.append("XGBoost")
-    if not LGBM_AVAILABLE:
-        unavailable_models.append("LightGBM")
-    if not CATBOOST_AVAILABLE:
-        unavailable_models.append("CatBoost")
-    
-    if unavailable_models:
-        st.markdown(f"""
-        <div class="warning-box">
-        <h4>Package Availability Notice</h4>
-        <p>Some advanced models may not be available: {', '.join(unavailable_models)}</p>
-        <p>The app will work with available models.</p>
-        </div>
-        """, unsafe_allow_html=True)
     
     # Sidebar for navigation
     st.sidebar.title("Navigation")
@@ -460,12 +432,45 @@ def main():
         "Make Prediction"
     ])
     
-    # File upload
-    uploaded_file = st.sidebar.file_uploader("Upload your dataset (CSV)", type=['csv'])
+    # File upload in sidebar
+    st.sidebar.markdown("### Upload your dataset (CSV)")
+    uploaded_file = st.sidebar.file_uploader(
+        "Drag and drop file here", 
+        type=['csv'],
+        help="Limit 200MB per file - CSV",
+        label_visibility="collapsed"
+    )
     
+    if uploaded_file is not None:
+        try:
+            # Read the uploaded file
+            df = pd.read_csv(uploaded_file)
+            st.sidebar.success(f"✅ File uploaded successfully! Shape: {df.shape}")
+            st.session_state.df = df
+        except Exception as e:
+            st.sidebar.error(f"Error reading file: {e}")
+    
+    # Show package availability status
+    unavailable_models = []
+    if not XGB_AVAILABLE:
+        unavailable_models.append("XGBoost")
+    if not LGBM_AVAILABLE:
+        unavailable_models.append("LightGBM")
+    if not CATBOOST_AVAILABLE:
+        unavailable_models.append("CatBoost")
+    
+    if unavailable_models:
+        st.sidebar.markdown(f"""
+        <div class="warning-box">
+        <h4>Package Availability Notice</h4>
+        <p>Some advanced models may not be available: {', '.join(unavailable_models)}</p>
+        <p>The app will work with available models.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
     if page == "Team Introduction":
-        # Already shown at the top
-        pass
+        show_team_introduction()
+        
     elif uploaded_file is not None:
         # Check if we need to load data
         data_loaded = app.df is not None and not app.df.empty
