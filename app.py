@@ -356,86 +356,91 @@ def show_team_introduction():
     # Create columns for team members
     col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; 
-                    border-radius: 15px; 
-                    text-align: center; 
-                    color: white;
-                    margin: 1rem 0;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
-            <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong><br><br>
-            <a href="https://www.linkedin.com/in/omar-yasser-mahrous" target="_blank" 
-               style="color: white; text-decoration: none; font-size: 1rem;
-                      background: rgba(255,255,255,0.2); 
-                      padding: 0.5rem 1rem; 
-                      border-radius: 25px;
-                      display: inline-block;
-                      margin-top: 0.5rem;">
-                LinkedIn Profile
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; 
-                    border-radius: 15px; 
-                    text-align: center; 
-                    color: white;
-                    margin: 1rem 0;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
-            <strong style="font-size: 1.3rem;">Marwan Aly</strong><br><br>
-            <a href="https://www.linkedin.com/in/marwanalymohamed" target="_blank" 
-               style="color: white; text-decoration: none; font-size: 1rem;
-                      background: rgba(255,255,255,0.2); 
-                      padding: 0.5rem 1rem; 
-                      border-radius: 25px;
-                      display: inline-block;
-                      margin-top: 0.5rem;">
-                LinkedIn Profile
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; 
-                    border-radius: 15px; 
-                    text-align: center; 
-                    color: white;
-                    margin: 1rem 0;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem; color: white;">●</div>
-            <strong style="font-size: 1.3rem;">Nouran Ashraf</strong><br><br>
-            <a href="https://www.linkedin.com/in/nouran-ashraf-5644811ab/" target="_blank" 
-               style="color: white; text-decoration: none; font-size: 1rem;
-                      background: rgba(255,255,255,0.2); 
-                      padding: 0.5rem 1rem; 
-                      border-radius: 25px;
-                      display: inline-block;
-                      margin-top: 0.5rem;">
-                LinkedIn Profile
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Facilitator Section (without blue background)
-    st.markdown("### Facilitator")
-    
-    st.markdown("""
-    <div style="text-align: center; 
+with col1:
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 padding: 1.5rem; 
-                margin: 1rem 0;">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #2c3e50;">●</div>
-        <strong style="font-size: 1.5rem; color: #2c3e50;">Eng. Sara Baza</strong>
+                border-radius: 15px; 
+                text-align: center; 
+                color: white;
+                margin: 1rem 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <img src="data:image/png;base64,{base64_icon1}" 
+             style="width:60px; margin-bottom:0.5rem;" />
+        <strong style="font-size: 1.3rem;">Omar Yasser Mahrous</strong><br><br>
+        <a href="https://www.linkedin.com/in/omar-yasser-mahrous" target="_blank" 
+           style="color: white; text-decoration: none; font-size: 1rem;
+                  background: rgba(255,255,255,0.2); 
+                  padding: 0.5rem 1rem; 
+                  border-radius: 25px;
+                  display: inline-block;
+                  margin-top: 0.5rem;">
+            LinkedIn Profile
+        </a>
     </div>
     """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; 
+                border-radius: 15px; 
+                text-align: center; 
+                color: white;
+                margin: 1rem 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <img src="data:image/png;base64,{base64_icon1}" 
+             style="width:60px; margin-bottom:0.5rem;" />
+        <strong style="font-size: 1.3rem;">Marwan Aly</strong><br><br>
+        <a href="https://www.linkedin.com/in/marwanalymohamed" target="_blank" 
+           style="color: white; text-decoration: none; font-size: 1rem;
+                  background: rgba(255,255,255,0.2); 
+                  padding: 0.5rem 1rem; 
+                  border-radius: 25px;
+                  display: inline-block;
+                  margin-top: 0.5rem;">
+            LinkedIn Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; 
+                border-radius: 15px; 
+                text-align: center; 
+                color: white;
+                margin: 1rem 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <img src="data:image/png;base64,{base64_icon2}" 
+             style="width:60px; margin-bottom:0.5rem;" />
+        <strong style="font-size: 1.3rem;">Nouran Ashraf</strong><br><br>
+        <a href="https://www.linkedin.com/in/nouran-ashraf-5644811ab/" target="_blank" 
+           style="color: white; text-decoration: none; font-size: 1rem;
+                  background: rgba(255,255,255,0.2); 
+                  padding: 0.5rem 1rem; 
+                  border-radius: 25px;
+                  display: inline-block;
+                  margin-top: 0.5rem;">
+            LinkedIn Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Facilitator Section
+st.markdown("### Facilitator")
+
+st.markdown(f"""
+<div style="text-align: center; 
+            padding: 1.5rem; 
+            margin: 1rem 0;">
+    <img src="data:image/png;base64,{base64_icon2}" 
+         style="width:60px; margin-bottom:0.5rem;" />
+    <strong style="font-size: 1.5rem; color: #2c3e50;">Eng. Sara Baza</strong>
+</div>
+""", unsafe_allow_html=True)
+
     
     # Project description
     st.markdown("---")
@@ -452,25 +457,6 @@ def show_team_introduction():
             and prediction capabilities to assist in early detection and screening.
         </p>
         
-        <h4 style="text-align: center; margin-bottom: 1rem;">Key Features:</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
-                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
-                Comprehensive data exploration and visualization
-            </div>
-            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
-                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
-                Multiple machine learning model training
-            </div>
-            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
-                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
-                Automated best model selection
-            </div>
-            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px;">
-                <div style="font-size: 1.5rem; margin-bottom: 0.5rem; color: white;">●</div>
-                Interactive prediction interface
-            </div>
-        </div>
     </div>
     """, unsafe_allow_html=True)
 
