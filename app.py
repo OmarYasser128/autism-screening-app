@@ -14,6 +14,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from scipy.stats import chi2_contingency, ttest_ind
 import io
 import warnings
+import pickle
 warnings.filterwarnings("ignore")
 
 # Try to import optional packages with fallbacks
@@ -85,6 +86,13 @@ st.markdown("""
         border-left: 5px solid #ffc107;
         margin: 10px 0;
     }
+    .success-box {
+        background-color: #d4edda;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #28a745;
+        margin: 10px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,12 +100,15 @@ class AutismScreeningApp:
     def __init__(self):
         self.df = None
         self.models = {}
+        self.best_model = None
+        self.best_model_name = None
         self.scaler = RobustScaler()
         self.X_train_scaled = None
         self.X_test_scaled = None
         self.y_train = None
         self.y_test = None
         self.feature_names = None
+        self.is_trained = False
         
     def load_data(self, file):
         """Load and preprocess the data"""
@@ -207,12 +218,15 @@ class AutismScreeningApp:
         skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         
         results = []
-        auc_results = {}
+        best_score = 0
+        self.best_model = None
+        self.best_model_name = None
 
         for name, model in self.models.items():
             try:
                 # Cross-validation scores
                 cv_scores = cross_val_score(model, self.X_train_scaled, self.y_train, cv=skf, scoring="accuracy")
+                cv_mean = cv_scores.mean()
                 
                 # Fit on training set and evaluate on test set
                 model.fit(self.X_train_scaled, self.y_train)
@@ -231,15 +245,24 @@ class AutismScreeningApp:
                 # Store results
                 results.append({
                     "Model": name,
-                    "CV Accuracy": round(cv_scores.mean(), 4),
+                    "CV Accuracy": round(cv_mean, 4),
                     "Test Accuracy": round(acc, 4),
                     "AUC": auc
                 })
+                
+                # Update best model
+                if cv_mean > best_score:
+                    best_score = cv_mean
+                    self.best_model = model
+                    self.best_model_name = name
                 
             except Exception as e:
                 st.warning(f"Model {name} failed: {str(e)}")
                 continue
 
+        # Mark as trained
+        self.is_trained = True
+        
         # Build DataFrame and sort by CV Accuracy
         if results:
             results_df = pd.DataFrame(results).sort_values(by="CV Accuracy", ascending=False)
@@ -247,9 +270,9 @@ class AutismScreeningApp:
         else:
             return pd.DataFrame(columns=["Model", "CV Accuracy", "Test Accuracy", "AUC"])
     
-    def predict_new_sample(self, features_dict):
-        """Make prediction for new sample"""
-        if not self.models or self.feature_names is None:
+    def predict_single_sample(self, features_dict):
+        """Make prediction using the best model only"""
+        if not self.is_trained or self.best_model is None:
             return None
         
         try:
@@ -263,31 +286,32 @@ class AutismScreeningApp:
             # Scale the features
             features_scaled = self.scaler.transform([features])
             
-            # Get predictions from all models
-            predictions = {}
-            for name, model in self.models.items():
-                try:
-                    pred = model.predict(features_scaled)[0]
-                    confidence = 0.5  # Default confidence
-                    
-                    if hasattr(model, "predict_proba"):
-                        proba = model.predict_proba(features_scaled)[0]
-                        confidence = max(proba)
-                    
-                    predictions[name] = {
-                        'prediction': pred,
-                        'confidence': confidence,
-                        'label': 'ASD' if pred == 1 else 'No ASD'
-                    }
-                except:
-                    continue
+            # Get prediction from best model
+            pred = self.best_model.predict(features_scaled)[0]
+            confidence = 0.5
             
-            return predictions
-        except:
+            if hasattr(self.best_model, "predict_proba"):
+                proba = self.best_model.predict_proba(features_scaled)[0]
+                confidence = max(proba)
+            
+            return {
+                'prediction': pred,
+                'confidence': confidence,
+                'label': 'ASD' if pred == 1 else 'No ASD',
+                'model_used': self.best_model_name
+            }
+        except Exception as e:
+            st.error(f"Prediction error: {str(e)}")
             return None
 
 def main():
     st.markdown('<div class="main-header">🧠 Autism Screening Prediction App</div>', unsafe_allow_html=True)
+    
+    # Initialize app in session state
+    if 'app' not in st.session_state:
+        st.session_state.app = AutismScreeningApp()
+    
+    app = st.session_state.app
     
     # Show package availability status
     unavailable_models = []
@@ -307,8 +331,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
-    app = AutismScreeningApp()
-    
     # Sidebar for navigation
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", [
@@ -322,13 +344,16 @@ def main():
     uploaded_file = st.sidebar.file_uploader("Upload your dataset (CSV)", type=['csv'])
     
     if uploaded_file is not None:
-        with st.spinner('Loading and preprocessing data...'):
-            try:
-                df = app.load_data(uploaded_file)
-                st.success("Data loaded successfully!")
-            except Exception as e:
-                st.error(f"Error loading data: {str(e)}")
-                return
+        if not app.df or st.sidebar.button("Reload Data"):
+            with st.spinner('Loading and preprocessing data...'):
+                try:
+                    df = app.load_data(uploaded_file)
+                    st.success("Data loaded successfully!")
+                except Exception as e:
+                    st.error(f"Error loading data: {str(e)}")
+                    return
+        else:
+            df = app.df
         
         if page == "Data Overview":
             show_data_overview(df)
@@ -503,35 +528,6 @@ def show_enhanced_eda(df):
         sns.heatmap(target_corr, annot=True, cmap='coolwarm', ax=ax, fmt='.3f')
         ax.set_title('Correlation of Features with Target (Class/ASD)')
         st.pyplot(fig)
-    
-    # 5. Feature Importance Analysis
-    st.subheader("🎯 Feature Importance Analysis")
-    
-    try:
-        # Use only numeric columns for feature importance
-        numeric_df = df_eda.select_dtypes(include=[np.number])
-        if 'Class/ASD' in numeric_df.columns:
-            X = numeric_df.drop('Class/ASD', axis=1)
-            y = numeric_df['Class/ASD']
-            
-            # Random Forest for importance
-            rf = RandomForestClassifier(random_state=42, n_estimators=100)
-            rf.fit(X, y)
-            
-            importances = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
-            
-            fig, ax = plt.subplots(figsize=(10, 8))
-            importances.head(15).plot(kind='barh', color='teal', ax=ax)
-            ax.set_title('Top 15 Feature Importances (Random Forest)')
-            ax.set_xlabel('Importance Score')
-            plt.tight_layout()
-            st.pyplot(fig)
-            
-            # Display top features
-            st.write("**Top 15 Important Features:**")
-            st.dataframe(importances.head(15).reset_index().rename(columns={'index': 'Feature', 0: 'Importance'}))
-    except Exception as e:
-        st.warning(f"Feature importance analysis skipped: {str(e)}")
 
 def show_advanced_model_training(app):
     st.markdown('<div class="section-header">🤖 Advanced Model Training & Evaluation</div>', unsafe_allow_html=True)
@@ -543,7 +539,7 @@ def show_advanced_model_training(app):
     <li><strong>Multiple Algorithms</strong> including ensemble methods</li>
     <li><strong>5-Fold Stratified Cross Validation</strong> for robust evaluation</li>
     <li><strong>AUC Scoring</strong> for imbalanced data performance</li>
-    <li><strong>Advanced Models:</strong> Random Forest, Gradient Boosting, AdaBoost + optional advanced models</li>
+    <li><strong>Best Model Selection</strong> automatically saved for predictions</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -554,6 +550,15 @@ def show_advanced_model_training(app):
         
         if not results_df.empty:
             st.success("All models trained successfully!")
+            
+            # Display which model was selected as best
+            if app.best_model_name:
+                st.markdown(f"""
+                <div class="success-box">
+                <h4>✅ Best Model Selected: {app.best_model_name}</h4>
+                <p>This model will be used for predictions in the <strong>Make Prediction</strong> page.</p>
+                </div>
+                """, unsafe_allow_html=True)
             
             # Display comprehensive results
             col1, col2 = st.columns(2)
@@ -589,59 +594,16 @@ def show_advanced_model_training(app):
             ax.set_xlim(0, 1)
             st.pyplot(fig)
             
-            # Show detailed results for each model
-            st.subheader("🔍 Detailed Model Performance")
-            
-            for name, model in app.models.items():
-                with st.expander(f"{name} - Detailed Analysis"):
-                    col1, col2 = st.columns(2)
-                    
-                    try:
-                        # Predictions
-                        y_pred = model.predict(app.X_test_scaled)
-                        acc = accuracy_score(app.y_test, y_pred)
-                        
-                        with col1:
-                            st.metric("Test Accuracy", f"{acc:.4f}")
-                            
-                            # Get AUC if available
-                            if hasattr(model, "predict_proba"):
-                                try:
-                                    y_proba = model.predict_proba(app.X_test_scaled)[:, 1]
-                                    auc = roc_auc_score(app.y_test, y_proba)
-                                    st.metric("AUC Score", f"{auc:.3f}")
-                                except:
-                                    st.metric("AUC Score", "N/A")
-                            
-                            # Classification report
-                            st.text("Classification Report:")
-                            report = classification_report(app.y_test, y_pred, output_dict=True)
-                            report_df = pd.DataFrame(report).transpose()
-                            st.dataframe(report_df.style.format({'precision': '{:.2f}', 'recall': '{:.2f}', 'f1-score': '{:.2f}', 'support': '{:.0f}'}))
-                        
-                        with col2:
-                            # Confusion matrix
-                            fig, ax = plt.subplots(figsize=(6, 4))
-                            cm = confusion_matrix(app.y_test, y_pred)
-                            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax,
-                                      xticklabels=['No ASD', 'ASD'], 
-                                      yticklabels=['No ASD', 'ASD'])
-                            ax.set_title(f"Confusion Matrix - {name}")
-                            ax.set_xlabel("Predicted")
-                            ax.set_ylabel("Actual")
-                            st.pyplot(fig)
-                    except Exception as e:
-                        st.error(f"Could not generate detailed results for {name}: {str(e)}")
-            
             # Model Evaluation Summary
             best_model = results_df.iloc[0]
             st.markdown(f"""
             <div class="info-box">
             <h4>📋 Model Evaluation Summary</h4>
             <ul>
-            <li><strong>Best Overall:</strong> {best_model['Model']} (CV={best_model['CV Accuracy']}, Test={best_model['Test Accuracy']})</li>
+            <li><strong>Best Model:</strong> {best_model['Model']} (CV={best_model['CV Accuracy']}, Test={best_model['Test Accuracy']})</li>
             <li><strong>Models Trained:</strong> {len(results_df)}</li>
             <li><strong>Key Insight:</strong> Models show consistent performance across CV and Test sets</li>
+            <li><strong>Ready for Predictions:</strong> Best model is saved and ready to use</li>
             </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -651,14 +613,27 @@ def show_advanced_model_training(app):
 def show_prediction_interface(app):
     st.markdown('<div class="section-header">🔮 Make Predictions</div>', unsafe_allow_html=True)
     
-    if not app.models:
-        st.warning("⚠️ Please train the models first in the 'Advanced Model Training' section!")
+    if not app.is_trained or app.best_model is None:
+        st.warning("""
+        ⚠️ **Please train the models first!**
+        
+        Go to the **Advanced Model Training** page and click **"Train All Advanced Models"**.
+        Once training is complete, the best model will be automatically saved and ready for predictions.
+        """)
         return
+    
+    st.markdown(f"""
+    <div class="success-box">
+    <h4>✅ Ready for Predictions!</h4>
+    <p>Using <strong>{app.best_model_name}</strong> - the best performing model from training.</p>
+    <p>CV Accuracy: {getattr(app, 'best_model_cv_score', 'N/A')} | Test Accuracy: {getattr(app, 'best_model_test_score', 'N/A')}</p>
+    </div>
+    """)
     
     st.markdown("""
     <div class="info-box">
     <h4>📋 Prediction Instructions</h4>
-    <p>Enter the patient's information below to get ASD predictions from all trained models.</p>
+    <p>Enter the patient's information below to get ASD prediction using our best trained model.</p>
     </div>
     """)
     
@@ -723,61 +698,72 @@ def show_prediction_interface(app):
             country_prefix = f"country_{country.replace(' ', '_').replace('-', '_')}"
             
             # For simplicity, we'll set these to 1 if they exist in the feature names
-            # In a real app, you'd need to map these properly to the actual feature names
             for feature_name in app.feature_names:
                 if 'ethnicity' in feature_name:
                     features_dict[feature_name] = 1 if ethnicity_prefix in feature_name else 0
                 elif 'country' in feature_name:
                     features_dict[feature_name] = 1 if country_prefix in feature_name else 0
             
-            # Make prediction
-            predictions = app.predict_new_sample(features_dict)
+            # Make prediction using the best model
+            prediction = app.predict_single_sample(features_dict)
             
-            if predictions:
+            if prediction:
                 # Display results
                 st.markdown("---")
-                st.subheader("📊 Prediction Results")
+                st.subheader("📊 Prediction Result")
                 
-                # Calculate consensus
-                asd_count = sum(1 for result in predictions.values() if result['prediction'] == 1)
-                total_models = len(predictions)
-                consensus_percentage = (asd_count / total_models) * 100
+                # Overall prediction
+                color = "red" if prediction['prediction'] == 1 else "green"
+                icon = "🔴" if prediction['prediction'] == 1 else "🟢"
                 
-                # Overall consensus
                 st.markdown(f"""
                 <div class="prediction-box">
-                <h3>Overall Consensus: {consensus_percentage:.1f}% models predict ASD</h3>
-                <p><strong>{asd_count} out of {total_models}</strong> models indicate Autism Spectrum Disorder</p>
+                <h2>{icon} Prediction: <span style="color: {color};">{prediction['label']}</span></h2>
+                <p><strong>Model Used:</strong> {prediction['model_used']}</p>
+                <p><strong>Confidence:</strong> {prediction['confidence']:.1%}</p>
+                <p><strong>Screening Score:</strong> {total_score}/10</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Individual model predictions
-                st.subheader("🤖 Individual Model Predictions")
-                
-                # Create columns for model results
-                model_cols = st.columns(3)
-                
-                for idx, (model_name, result) in enumerate(predictions.items()):
-                    with model_cols[idx % 3]:
-                        color = "red" if result['prediction'] == 1 else "green"
-                        icon = "🔴" if result['prediction'] == 1 else "🟢"
-                        
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <h4>{icon} {model_name}</h4>
-                            <h3 style="color: {color};">{result['label']}</h3>
-                            <p>Confidence: {result['confidence']:.1%}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                
                 # Interpretation
                 st.subheader("💡 Interpretation")
-                if consensus_percentage >= 70:
-                    st.error("🚨 **High probability of ASD** - Strong consensus among models suggests further clinical evaluation is recommended.")
-                elif consensus_percentage >= 40:
-                    st.warning("⚠️ **Moderate probability of ASD** - Mixed results suggest additional screening may be beneficial.")
+                if prediction['prediction'] == 1:
+                    if prediction['confidence'] >= 0.8:
+                        st.error("""
+                        🚨 **High probability of ASD** 
+                        
+                        The model indicates a strong likelihood of Autism Spectrum Disorder. 
+                        Further clinical evaluation is strongly recommended.
+                        """)
+                    elif prediction['confidence'] >= 0.6:
+                        st.warning("""
+                        ⚠️ **Moderate probability of ASD**
+                        
+                        The model suggests possible Autism Spectrum Disorder.
+                        Additional screening and professional evaluation are recommended.
+                        """)
+                    else:
+                        st.warning("""
+                        ⚠️ **Low probability of ASD**
+                        
+                        The model indicates some signs of ASD but with lower confidence.
+                        Consider follow-up screening.
+                        """)
                 else:
-                    st.success("✅ **Low probability of ASD** - Majority of models indicate no autism spectrum disorder.")
+                    if prediction['confidence'] >= 0.8:
+                        st.success("""
+                        ✅ **Low probability of ASD**
+                        
+                        The model indicates a low likelihood of Autism Spectrum Disorder.
+                        No immediate concerns based on the provided information.
+                        """)
+                    else:
+                        st.info("""
+                        ℹ️ **Inconclusive result**
+                        
+                        The model could not make a confident prediction.
+                        Consider providing more information or consulting a professional.
+                        """)
                 
                 # Risk factors analysis
                 st.subheader("🔍 Risk Factors Analysis")
@@ -795,9 +781,17 @@ def show_prediction_interface(app):
                         st.write(f"• {factor}")
                 else:
                     st.info("No significant risk factors identified.")
+                
+                # Disclaimer
+                st.markdown("---")
+                st.info("""
+                **⚠️ Important Disclaimer:** 
+                This prediction is based on machine learning models and should not be considered a medical diagnosis. 
+                Always consult with qualified healthcare professionals for proper assessment and diagnosis.
+                """)
                     
             else:
-                st.error("❌ Prediction failed. Please make sure models are properly trained and data is formatted correctly.")
+                st.error("❌ Prediction failed. Please make sure the model is properly trained and data is formatted correctly.")
 
 if __name__ == "__main__":
     main()
