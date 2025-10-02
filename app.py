@@ -356,25 +356,6 @@ def show_team_introduction():
     # Create columns for team members
     col1, col2, col3 = st.columns(3)
     
-def show_team_introduction():
-    """Display team introduction page with blue backgrounds"""
-    st.markdown('<div class="team-header">SIC-702 Group 7</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="team-info">
-        <h2 style="text-align: center; margin-bottom: 1.5rem;">Autism Spectrum Disorder Screening Application</h2>
-        <p style="text-align: center; font-size: 1.1rem; margin-bottom: 2rem;">
-            A comprehensive machine learning application for early detection and screening of Autism Spectrum Disorder
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Project Team Section
-    st.markdown("### Project Team")
-    
-    # Create columns for team members
-    col1, col2, col3 = st.columns(3)
-    
     with col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
@@ -458,6 +439,7 @@ def show_team_introduction():
     
     # Project description
     st.markdown("---")
+    st.markdown("""
     <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
                 padding: 2rem; 
                 border-radius: 15px; 
