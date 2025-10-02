@@ -162,129 +162,129 @@ class AutismScreeningApp:
         
         return self.df
     
-def train_enhanced_models(self):
-    """Train all models with cross-validation and AUC scoring - EXACTLY from your notebook"""
-    X = self.df.drop(columns=['Class/ASD'])
-    y = self.df['Class/ASD']
-    self.feature_names = X.columns.tolist()
-    
-    # Train-Test Split
-    X_train, X_test, self.y_train, self.y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    # Scale features
-    self.X_train_scaled = self.scaler.fit_transform(X_train)
-    self.X_test_scaled = self.scaler.transform(X_test)
-    
-    # Define models - EXACTLY from your notebook
-    self.models = {
-        "Logistic Regression": LogisticRegression(max_iter=1000, C=0.01),
-        "Decision Tree": DecisionTreeClassifier(max_depth=5, criterion="gini", min_samples_split=20, min_samples_leaf=15),
-        "Random Forest": RandomForestClassifier(n_estimators=500, max_depth=8, random_state=42, min_samples_split=20, min_samples_leaf=10),
-        "Support Vector Machine": SVC(kernel="rbf", C=1.0, gamma="scale", probability=True),
-        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=8, weights="distance", metric="euclidean"),
-        "Gradient Boosting": GradientBoostingClassifier(n_estimators=500, learning_rate=0.01, max_depth=3),
-        "XGBoost": XGBClassifier(n_estimators=500, learning_rate=0.05, max_depth=2, random_state=42, eval_metric="logloss"),
-        "AdaBoost": AdaBoostClassifier(n_estimators=500, learning_rate=0.05, random_state=42),
-    }
-    
-    # Add optional models if available
-    if LGBM_AVAILABLE:
-        self.models["LightGBM"] = LGBMClassifier(n_estimators=500, learning_rate=0.05, max_depth=6, num_leaves=15, random_state=42, verbose=-1)
-    
-    if CATBOOST_AVAILABLE:
-        self.models["CatBoost"] = CatBoostClassifier(iterations=500, learning_rate=0.05, depth=6, random_state=42, verbose=0)
-    
-    # Define stratified k-fold
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    
-    results = []
-    best_score = 0
-    self.best_model = None
-    self.best_model_name = None
-
-    for name, model in self.models.items():
-        try:
-            # Cross-validation scores
-            cv_scores = cross_val_score(model, self.X_train_scaled, self.y_train, cv=skf, scoring="accuracy")
-            cv_mean = cv_scores.mean()
-            cv_std = cv_scores.std()
-            
-            # Fit on training set and evaluate on test set
-            model.fit(self.X_train_scaled, self.y_train)
-            y_pred = model.predict(self.X_test_scaled)
-            acc = accuracy_score(self.y_test, y_pred)
-
-            # Calculate AUC if possible
-            auc = 0
-            if hasattr(model, "predict_proba"):
-                try:
-                    y_proba = model.predict_proba(self.X_test_scaled)[:, 1]
-                    auc = roc_auc_score(self.y_test, y_proba)
-                except:
-                    auc = 0
-
-            # Store results
-            results.append({
-                "Model": name,
-                "CV Accuracy": round(cv_mean, 4),
-                "CV Std": round(cv_std, 4),
-                "Test Accuracy": round(acc, 4),
-                "AUC": round(auc, 4) if auc != 0 else "N/A"
-            })
-            
-        except Exception as e:
-            st.warning(f"Model {name} failed: {str(e)}")
-            continue
-
-    # Mark as trained
-    self.is_trained = True
-    
-    # Build DataFrame and sort by CV Accuracy
-    if results:
-        results_df = pd.DataFrame(results)
+    def train_enhanced_models(self):
+        """Train all models with cross-validation and AUC scoring - EXACTLY from your notebook"""
+        X = self.df.drop(columns=['Class/ASD'])
+        y = self.df['Class/ASD']
+        self.feature_names = X.columns.tolist()
         
-        # Enhanced model selection: prioritize models with good CV accuracy AND good test accuracy
-        # Calculate a combined score that considers both CV and test performance
-        valid_results = results_df[results_df['AUC'] != 'N/A'].copy()
+        # Train-Test Split
+        X_train, X_test, self.y_train, self.y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
         
-        if not valid_results.empty:
-            # Normalize scores for comparison
-            valid_results['CV_Score_Norm'] = (valid_results['CV Accuracy'] - valid_results['CV Accuracy'].min()) / (valid_results['CV Accuracy'].max() - valid_results['CV Accuracy'].min())
-            valid_results['Test_Score_Norm'] = (valid_results['Test Accuracy'] - valid_results['Test Accuracy'].min()) / (valid_results['Test Accuracy'].max() - valid_results['Test Accuracy'].min())
-            valid_results['AUC_Score_Norm'] = (valid_results['AUC'] - valid_results['AUC'].min()) / (valid_results['AUC'].max() - valid_results['AUC'].min())
+        # Scale features
+        self.X_train_scaled = self.scaler.fit_transform(X_train)
+        self.X_test_scaled = self.scaler.transform(X_test)
+        
+        # Define models - EXACTLY from your notebook
+        self.models = {
+            "Logistic Regression": LogisticRegression(max_iter=1000, C=0.01),
+            "Decision Tree": DecisionTreeClassifier(max_depth=5, criterion="gini", min_samples_split=20, min_samples_leaf=15),
+            "Random Forest": RandomForestClassifier(n_estimators=500, max_depth=8, random_state=42, min_samples_split=20, min_samples_leaf=10),
+            "Support Vector Machine": SVC(kernel="rbf", C=1.0, gamma="scale", probability=True),
+            "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=8, weights="distance", metric="euclidean"),
+            "Gradient Boosting": GradientBoostingClassifier(n_estimators=500, learning_rate=0.01, max_depth=3),
+            "XGBoost": XGBClassifier(n_estimators=500, learning_rate=0.05, max_depth=2, random_state=42, eval_metric="logloss"),
+            "AdaBoost": AdaBoostClassifier(n_estimators=500, learning_rate=0.05, random_state=42),
+        }
+        
+        # Add optional models if available
+        if LGBM_AVAILABLE:
+            self.models["LightGBM"] = LGBMClassifier(n_estimators=500, learning_rate=0.05, max_depth=6, num_leaves=15, random_state=42, verbose=-1)
+        
+        if CATBOOST_AVAILABLE:
+            self.models["CatBoost"] = CatBoostClassifier(iterations=500, learning_rate=0.05, depth=6, random_state=42, verbose=0)
+        
+        # Define stratified k-fold
+        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        
+        results = []
+        best_score = 0
+        self.best_model = None
+        self.best_model_name = None
+
+        for name, model in self.models.items():
+            try:
+                # Cross-validation scores
+                cv_scores = cross_val_score(model, self.X_train_scaled, self.y_train, cv=skf, scoring="accuracy")
+                cv_mean = cv_scores.mean()
+                cv_std = cv_scores.std()
+                
+                # Fit on training set and evaluate on test set
+                model.fit(self.X_train_scaled, self.y_train)
+                y_pred = model.predict(self.X_test_scaled)
+                acc = accuracy_score(self.y_test, y_pred)
+
+                # Calculate AUC if possible
+                auc = 0
+                if hasattr(model, "predict_proba"):
+                    try:
+                        y_proba = model.predict_proba(self.X_test_scaled)[:, 1]
+                        auc = roc_auc_score(self.y_test, y_proba)
+                    except:
+                        auc = 0
+
+                # Store results
+                results.append({
+                    "Model": name,
+                    "CV Accuracy": round(cv_mean, 4),
+                    "CV Std": round(cv_std, 4),
+                    "Test Accuracy": round(acc, 4),
+                    "AUC": round(auc, 4) if auc != 0 else "N/A"
+                })
+                
+            except Exception as e:
+                st.warning(f"Model {name} failed: {str(e)}")
+                continue
+
+        # Mark as trained
+        self.is_trained = True
+        
+        # Build DataFrame and sort by CV Accuracy
+        if results:
+            results_df = pd.DataFrame(results)
             
-            # Combined score (weighted average)
-            valid_results['Combined_Score'] = (
-                0.4 * valid_results['CV_Score_Norm'] + 
-                0.4 * valid_results['Test_Score_Norm'] + 
-                0.2 * valid_results['AUC_Score_Norm']
-            )
+            # Enhanced model selection: prioritize models with good CV accuracy AND good test accuracy
+            # Calculate a combined score that considers both CV and test performance
+            valid_results = results_df[results_df['AUC'] != 'N/A'].copy()
             
-            # Find best model based on combined score
-            best_idx = valid_results['Combined_Score'].idxmax()
-            best_model_name = valid_results.loc[best_idx, 'Model']
+            if not valid_results.empty:
+                # Normalize scores for comparison
+                valid_results['CV_Score_Norm'] = (valid_results['CV Accuracy'] - valid_results['CV Accuracy'].min()) / (valid_results['CV Accuracy'].max() - valid_results['CV Accuracy'].min())
+                valid_results['Test_Score_Norm'] = (valid_results['Test Accuracy'] - valid_results['Test Accuracy'].min()) / (valid_results['Test Accuracy'].max() - valid_results['Test Accuracy'].min())
+                valid_results['AUC_Score_Norm'] = (valid_results['AUC'] - valid_results['AUC'].min()) / (valid_results['AUC'].max() - valid_results['AUC'].min())
+                
+                # Combined score (weighted average)
+                valid_results['Combined_Score'] = (
+                    0.4 * valid_results['CV_Score_Norm'] + 
+                    0.4 * valid_results['Test_Score_Norm'] + 
+                    0.2 * valid_results['AUC_Score_Norm']
+                )
+                
+                # Find best model based on combined score
+                best_idx = valid_results['Combined_Score'].idxmax()
+                best_model_name = valid_results.loc[best_idx, 'Model']
+                
+                # Train the best model one more time to get the actual model object
+                best_model_config = self.models[best_model_name]
+                best_model_config.fit(self.X_train_scaled, self.y_train)
+                self.best_model = best_model_config
+                self.best_model_name = best_model_name
+                
+                st.info(f"🎯 Best model selected: **{best_model_name}** (Combined Score: {valid_results.loc[best_idx, 'Combined_Score']:.3f})")
+                
+            else:
+                # Fallback: use CV Accuracy only
+                best_idx = results_df['CV Accuracy'].idxmax()
+                best_model_name = results_df.loc[best_idx, 'Model']
+                self.best_model = self.models[best_model_name]
+                self.best_model_name = best_model_name
+                st.info(f"🎯 Best model selected (fallback): **{best_model_name}**")
             
-            # Train the best model one more time to get the actual model object
-            best_model_config = self.models[best_model_name]
-            best_model_config.fit(self.X_train_scaled, self.y_train)
-            self.best_model = best_model_config
-            self.best_model_name = best_model_name
-            
-            st.info(f"🎯 Best model selected: **{best_model_name}** (Combined Score: {valid_results.loc[best_idx, 'Combined_Score']:.3f})")
-            
+            return results_df.sort_values(by="CV Accuracy", ascending=False)
         else:
-            # Fallback: use CV Accuracy only
-            best_idx = results_df['CV Accuracy'].idxmax()
-            best_model_name = results_df.loc[best_idx, 'Model']
-            self.best_model = self.models[best_model_name]
-            self.best_model_name = best_model_name
-            st.info(f"🎯 Best model selected (fallback): **{best_model_name}**")
-        
-        return results_df.sort_values(by="CV Accuracy", ascending=False)
-    else:
-        return pd.DataFrame(columns=["Model", "CV Accuracy", "Test Accuracy", "AUC"])
+            return pd.DataFrame(columns=["Model", "CV Accuracy", "Test Accuracy", "AUC"])
     
     def predict_single_sample(self, features_dict):
         """Make prediction using the best model only"""
