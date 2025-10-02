@@ -51,46 +51,76 @@ st.markdown("""
         color: #1f77b4;
         text-align: center;
         margin-bottom: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .section-header {
         font-size: 1.5rem;
         color: #2e86ab;
         margin-top: 2rem;
         margin-bottom: 1rem;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
     }
     .metric-card {
-        background-color: #f0f2f6;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
         border-radius: 10px;
         margin: 0.5rem 0;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .info-box {
-        background-color: #e7f3ff;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         padding: 15px;
         border-radius: 10px;
         border-left: 5px solid #2196F3;
         margin: 10px 0;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .prediction-box {
-        background-color: #f0f8ff;
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
         padding: 20px;
         border-radius: 10px;
         border: 2px solid #1f77b4;
         margin: 10px 0;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .warning-box {
-        background-color: #fff3cd;
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
         padding: 15px;
         border-radius: 10px;
         border-left: 5px solid #ffc107;
         margin: 10px 0;
+        color: #856404;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .success-box {
-        background-color: #d4edda;
+        background: linear-gradient(135deg, #c2e9fb 0%, #a1c4fd 100%);
         padding: 15px;
         border-radius: 10px;
         border-left: 5px solid #28a745;
         margin: 10px 0;
+        color: #155724;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    .sidebar .sidebar-content {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .css-1d391kg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -245,44 +275,15 @@ class AutismScreeningApp:
         if results:
             results_df = pd.DataFrame(results)
             
-            # Enhanced model selection: prioritize models with good CV accuracy AND good test accuracy
-            # Calculate a combined score that considers both CV and test performance
-            valid_results = results_df[results_df['AUC'] != 'N/A'].copy()
+            # Select best model based on TEST ACCURACY only
+            best_idx = results_df['Test Accuracy'].idxmax()
+            best_model_name = results_df.loc[best_idx, 'Model']
+            self.best_model = self.models[best_model_name]
+            self.best_model_name = best_model_name
             
-            if not valid_results.empty:
-                # Normalize scores for comparison
-                valid_results['CV_Score_Norm'] = (valid_results['CV Accuracy'] - valid_results['CV Accuracy'].min()) / (valid_results['CV Accuracy'].max() - valid_results['CV Accuracy'].min())
-                valid_results['Test_Score_Norm'] = (valid_results['Test Accuracy'] - valid_results['Test Accuracy'].min()) / (valid_results['Test Accuracy'].max() - valid_results['Test Accuracy'].min())
-                valid_results['AUC_Score_Norm'] = (valid_results['AUC'] - valid_results['AUC'].min()) / (valid_results['AUC'].max() - valid_results['AUC'].min())
-                
-                # Combined score (weighted average)
-                valid_results['Combined_Score'] = (
-                    0.4 * valid_results['CV_Score_Norm'] + 
-                    0.4 * valid_results['Test_Score_Norm'] + 
-                    0.2 * valid_results['AUC_Score_Norm']
-                )
-                
-                # Find best model based on combined score
-                best_idx = valid_results['Combined_Score'].idxmax()
-                best_model_name = valid_results.loc[best_idx, 'Model']
-                
-                # Train the best model one more time to get the actual model object
-                best_model_config = self.models[best_model_name]
-                best_model_config.fit(self.X_train_scaled, self.y_train)
-                self.best_model = best_model_config
-                self.best_model_name = best_model_name
-                
-                st.info(f"🎯 Best model selected: **{best_model_name}** (Combined Score: {valid_results.loc[best_idx, 'Combined_Score']:.3f})")
-                
-            else:
-                # Fallback: use CV Accuracy only
-                best_idx = results_df['CV Accuracy'].idxmax()
-                best_model_name = results_df.loc[best_idx, 'Model']
-                self.best_model = self.models[best_model_name]
-                self.best_model_name = best_model_name
-                st.info(f"🎯 Best model selected (fallback): **{best_model_name}**")
+            st.info(f"🎯 Best model selected: **{best_model_name}** (Test Accuracy: {results_df.loc[best_idx, 'Test Accuracy']})")
             
-            return results_df.sort_values(by="CV Accuracy", ascending=False)
+            return results_df.sort_values(by="Test Accuracy", ascending=False)
         else:
             return pd.DataFrame(columns=["Model", "CV Accuracy", "Test Accuracy", "AUC"])
     
@@ -596,7 +597,7 @@ def show_advanced_model_training(app):
     <li><strong>Multiple Algorithms</strong> including ensemble methods</li>
     <li><strong>5-Fold Stratified Cross Validation</strong> for robust evaluation</li>
     <li><strong>AUC Scoring</strong> for imbalanced data performance</li>
-    <li><strong>Smart Model Selection</strong> based on CV Accuracy, Test Accuracy, and AUC</li>
+    <li><strong>Best Model Selection</strong> based on Test Accuracy</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -617,7 +618,7 @@ def show_advanced_model_training(app):
             st.markdown(f"""
             <div class="success-box">
             <h4>✅ Best Model Selected: {app.best_model_name}</h4>
-            <p><strong>Selection Method:</strong> Combined scoring (CV Accuracy + Test Accuracy + AUC)</p>
+            <p><strong>Selection Method:</strong> Highest Test Accuracy</p>
             <p>This model will be used for predictions in the <strong>Make Prediction</strong> page.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -694,7 +695,7 @@ def show_advanced_model_training(app):
         <li><strong>Test Accuracy:</strong> {best_row['Test Accuracy']}</li>
         <li><strong>AUC:</strong> {best_row['AUC']}</li>
         <li><strong>Models Trained:</strong> {len(results_df)}</li>
-        <li><strong>Selection Criteria:</strong> Combined score (CV + Test + AUC)</li>
+        <li><strong>Selection Criteria:</strong> Highest Test Accuracy</li>
         <li><strong>Ready for Predictions:</strong> Best model is saved and ready to use</li>
         </ul>
         </div>
